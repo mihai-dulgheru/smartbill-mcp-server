@@ -163,8 +163,14 @@ export class SmartBillClient {
     // The server's own count is the only signal that sees every process sharing this token — our
     // local sliding window only sees this process. When it says the window is exhausted, hold
     // further requests until its reset time rather than trusting our own count alone.
+    // Clamped to MAX_RETRY_AFTER_SECONDS: V3's penalty ladder escalates to 600s and `reset` can
+    // carry that same escalated wait (or just reflect local clock skew), and this hold is not
+    // subject to the ceiling request() applies to Retry-After — without the clamp here, the next
+    // call on this API version would sleep inside #reserve() for however long the header said.
     if (rateLimit.remaining !== undefined && rateLimit.remaining <= 0 && rateLimit.reset !== undefined) {
-      this.#windows[api].holdUntil(rateLimit.reset * 1000);
+      this.#windows[api].holdUntil(
+        Math.min(rateLimit.reset * 1000, this.#clock.now() + MAX_RETRY_AFTER_SECONDS * 1000),
+      );
     }
     // Lowercased once so every check below is case-insensitive, matching a server that sends
     // e.g. `Application/JSON` or `Text/HTML`.

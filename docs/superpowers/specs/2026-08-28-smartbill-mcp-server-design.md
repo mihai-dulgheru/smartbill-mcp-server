@@ -285,7 +285,9 @@ then any trap that applies to it:
 ### 7.2 PDF handling
 
 `GET /invoice/pdf` and `GET /estimate/pdf` return `application/octet-stream`. The tool writes the
-bytes to `SMARTBILL_DOWNLOAD_DIR` as `{series}-{number}.pdf` and returns `{ path, bytes }`.
+bytes to `SMARTBILL_DOWNLOAD_DIR` as `{cif}-{series}-{number}.pdf` and returns `{ path, bytes }`.
+The cif is included because it is a per-call argument: without it, two companies sharing the same
+series and number would overwrite each other's PDF in one download directory.
 Re-downloading the same document overwrites the file rather than accumulating copies.
 Base64-inlining a PDF would consume roughly 1.4x its size in context for no benefit, since the
 model cannot read PDF bytes directly. The directory is created if absent; a write failure is

@@ -180,11 +180,12 @@ test('parses rate-limit headers', async () => {
 test('a response reporting remaining <= 0 holds the window until X-RateLimit-Reset', async () => {
   // Our own sliding window only sees this process; X-RateLimit-Remaining sees every process
   // sharing the token, so a reported 0 must hold the window even though the local count alone
-  // would have allowed the next call straight through.
+  // would have allowed the next call straight through. 10s is the ordinary, common case (ordinary
+  // window reset) — well under MAX_RETRY_AFTER_SECONDS, so the clamp must not shorten it.
   let time = 1_700_000_000_000;
   const slept: number[] = [];
   const clock: Clock = { now: () => time, sleep: async (ms) => { slept.push(ms); time += ms; } };
-  const resetSeconds = Math.floor(time / 1000) + 5;
+  const resetSeconds = Math.floor(time / 1000) + 10;
   const { impl } = stubFetch(
     json({ errorText: '' }, 200, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(resetSeconds) }),
     json({ errorText: '' }),
@@ -192,7 +193,39 @@ test('a response reporting remaining <= 0 holds the window until X-RateLimit-Res
   const c = new SmartBillClient(config, { fetchImpl: impl, clock });
   await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
   await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
-  assert.ok(slept.some((ms) => ms >= 4000 && ms <= 5000), `expected a wait near 5000ms, got ${JSON.stringify(slept)}`);
+  assert.ok(slept.some((ms) => ms >= 9000 && ms <= 10000), `expected a wait near 10000ms, got ${JSON.stringify(slept)}`);
+});
+
+test('a reset far in the future (V3 penalty-ladder territory) is clamped to MAX_RETRY_AFTER_SECONDS, not obeyed in full', async () => {
+  // Traced regression: a 429 can carry remaining:0 with a reset up to 600s out (the V3 penalty
+  // ladder is 5,10,20,40,80,160,300,600s, and the spec says X-RateLimit-Reset can carry that same
+  // "current wait interval"). request()'s own MAX_RETRY_AFTER_SECONDS ceiling only guards the
+  // retry it performs itself — without clamping the hold too, the *next* tool call would sleep
+  // inside #reserve() for the full, unclamped duration.
+  let time = 1_700_000_000_000;
+  const slept: number[] = [];
+  const clock: Clock = { now: () => time, sleep: async (ms) => { slept.push(ms); time += ms; } };
+  const resetSeconds = Math.floor(time / 1000) + 600;
+  const { impl } = stubFetch(
+    json(
+      { status: 429, type: 'invalid_request_error', errors: [{ code: 'rate_limit_exceeded', message: 'slow down' }] },
+      429,
+      { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(resetSeconds) },
+    ),
+    json({ errorText: '' }),
+  );
+  const c = new SmartBillClient(config, { fetchImpl: impl, clock });
+  // First call: 429 with no Retry-After header, so request() returns the error as-is (no sleep of
+  // its own) — but #send still records the hold from remaining/reset.
+  const first = await c.request({ api: 'v3', method: 'GET', path: '/v3/companies/RO1/clients' });
+  assert.equal(first.ok, false);
+  slept.length = 0;
+  // Second call: whatever the hold sleeps, it must not exceed the 60s ceiling — 600s would mean
+  // this call (and everything serialised behind it) hangs for ten minutes.
+  await c.request({ api: 'v3', method: 'GET', path: '/v3/companies/RO1/clients' });
+  assert.ok(slept.length > 0, 'expected the second call to wait out the hold');
+  const totalSlept = slept.reduce((a, b) => a + b, 0);
+  assert.ok(totalSlept <= 60_000, `expected the hold to be clamped to <= 60000ms, got ${totalSlept}`);
 });
 
 test('a remaining count above zero does not hold the window', async () => {
