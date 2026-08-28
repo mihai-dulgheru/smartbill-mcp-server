@@ -35,7 +35,7 @@ export const clientSchema = z.object({
   address: z.string().optional(),
   city: z.string().optional(),
   county: z.string().optional(),
-  email: z.string().optional(),
+  email: z.string().email().optional(),
   phone: z.string().optional(),
   contact: z.string().optional(),
   iban: z.string().optional(),
@@ -47,14 +47,14 @@ export const clientSchema = z.object({
 export const productSchema = z.object({
   name: z.string().describe('Product name. Required.'),
   quantity: z.number().describe('Quantity. Required.'),
-  price: z.number().describe(
+  price: z.number().min(0).describe(
     'Unit price. EXCLUDES VAT unless isTaxIncluded is true — this is the most common source of wrong totals.',
   ),
   measuringUnitName: z.string().describe(
-    'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly.',
+    'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly — read it from smartbill_get_tax_and_series.',
   ),
   taxPercentage: z.number().describe('VAT percentage as a bare number, e.g. 21. Never "21%".'),
-  code: z.string().optional().describe('SKU. Required when useStock is true.'),
+  code: z.string().optional().describe('SKU. Required if your company has the "Foloseste cod produs" setting enabled in SmartBill Cloud, otherwise optional.'),
   productDescription: z.string().optional(),
   isService: z.boolean().optional(),
   currency: currencyEnum.optional(),
@@ -67,8 +67,8 @@ export const productSchema = z.object({
   isDiscount: z.boolean().optional(),
   numberOfItems: z.number().int().optional().describe('How many preceding lines the discount applies to.'),
   discountType: z.union([z.literal(1), z.literal(2)]).optional().describe('1 = percentage, 2 = fixed value.'),
-  discountValue: z.number().optional(),
-  discountPercentage: z.number().optional(),
+  discountValue: z.number().max(0).optional().describe('Discount value for value-based discounts. Must be negative (e.g. -10 for a 10 RON discount). A positive value is not rejected by the API but will increase the total instead of reducing it.'),
+  discountPercentage: z.number().gt(0).lte(100).optional(),
   translatedName: z.string().optional(),
   translatedMeasuringUnit: z.string().optional(),
   saveToDb: z.boolean().optional(),
@@ -95,8 +95,8 @@ const documentBase = {
   ),
   client: clientSchema,
   products: z.array(productSchema).min(1),
-  issueDate: z.string().optional().describe('yyyy-MM-dd. Defaults to today.'),
-  dueDate: z.string().optional().describe('yyyy-MM-dd.'),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('yyyy-MM-dd. Defaults to today.'),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('yyyy-MM-dd.'),
   isDraft: z.boolean().optional(),
   currency: currencyEnum.optional(),
   exchangeRate: z.number().optional(),
@@ -120,15 +120,19 @@ export const invoiceRequestSchema = z.object({
   language: languageEnum.optional(),
   useStock: z.boolean().optional().describe('Discharge stock. Every product then needs a `code`.'),
   payment: invoicePaymentSchema.optional(),
-  paymentDate: z.string().optional(),
-  deliveryDate: z.string().optional(),
+  paymentDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  deliveryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   usePaymentTax: z.boolean().optional().describe('VAT on collection (TVA la incasare).'),
   paymentBase: z.number().optional(),
   colectedTax: z.number().optional(),
   paymentTotal: z.number().optional(),
   useEstimateDetails: z.boolean().optional().describe('Copy the products from a proforma named in `estimate`.'),
   estimate: z
-    .object({ seriesName: z.string(), number: z.string() })
+    .object({
+      seriesName: z.string(),
+      number: z.string(),
+      useStock: z.boolean().optional().describe('Discharge stock when issuing the invoice generated from the proforma.'),
+    })
     .optional()
     .describe('The proforma to invoice, when useEstimateDetails is true.'),
 });
@@ -140,7 +144,7 @@ export const estimateRequestSchema = z.object({
 
 export const paymentRequestSchema = z.object({
   type: paymentTypeEnum,
-  issueDate: z.string().optional().describe('yyyy-MM-dd.'),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('yyyy-MM-dd.'),
   isDraft: z.boolean().optional(),
   seriesName: z.string().optional().describe('Receipt series, required when type is "Chitanta".'),
   number: z.string().optional(),
@@ -150,7 +154,7 @@ export const paymentRequestSchema = z.object({
   client: clientSchema.optional(),
   products: z.array(productSchema).optional(),
   value: z.number().optional(),
-  currency: currencyEnum.optional(),
+  currency: z.string().optional().describe('Payment currency. Defaults to RON. Fiscal receipts (bon fiscal) can only be issued in RON.'),
   exchangeRate: z.number().optional(),
   precision: z.number().int().optional(),
   isCash: z.boolean().optional(),
@@ -170,16 +174,19 @@ export const paymentRequestSchema = z.object({
   language: z.string().optional(),
   useInvoiceDetails: z.boolean().optional().describe('Take the client and products from the invoices in invoicesList.'),
   invoicesList: z
-    .array(z.object({ seriesName: z.string(), number: z.string() }))
+    .union([
+      z.array(z.object({ seriesName: z.string(), number: z.string() })),
+      z.object({ seriesName: z.string(), number: z.string() }),
+    ])
     .optional()
-    .describe('Invoices this payment settles.'),
+    .describe('Invoice or list of invoices this payment settles.'),
 });
 
 export const sendEmailRequestSchema = z.object({
   seriesName: z.string(),
   number: z.string(),
   type: z.enum(['factura', 'proforma']),
-  to: z.string().optional().describe('Defaults to the client email on record.'),
+  to: z.string().email().optional().describe('Defaults to the client email on record.'),
   cc: z.string().optional(),
   bcc: z.string().optional(),
   subject: z.string().optional(),
