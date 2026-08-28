@@ -2,16 +2,45 @@
   "name": "smartbill-mcp-server",
   "version": "1.0.0",
   "description": "MCP server for the SmartBill Cloud API",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "smartbill",
+    "invoicing",
+    "facturare",
+    "romania",
+    "e-factura",
+    "accounting",
+    "api-client"
+  ],
+  "homepage": "https://github.com/mihai-dulgheru/smartbill-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/mihai-dulgheru/smartbill-mcp-server/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mihai-dulgheru/smartbill-mcp-server.git"
+  },
+  "license": "MIT",
+  "author": "Mihai Dulgheru <mihai.dulgheru@chesscoders.com>",
   "type": "module",
-  "bin": { "smartbill-mcp-server": "dist/index.js" },
+  "bin": {
+    "smartbill-mcp-server": "dist/index.js"
+  },
   "main": "dist/index.js",
-  "files": ["dist", "README.md"],
-  "engines": { "node": ">=20" },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/*.test.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.0.0",
