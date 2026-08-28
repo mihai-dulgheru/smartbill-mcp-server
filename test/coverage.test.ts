@@ -31,7 +31,7 @@ test('the spec still has 29 operations', async () => {
   assert.equal((await specOperations()).size, 29);
 });
 
-test('every spec operation has exactly one tool', async () => {
+test('no spec operation is missing a tool', async () => {
   const ops = await specOperations();
   const covered = new Set(allTools.map((t) => t.operationId));
   const missing = [...ops.keys()].filter((id) => !covered.has(id));
@@ -87,10 +87,30 @@ test('exactly four tools are marked destructive, and they are the deletes', () =
   ]);
 });
 
-test('sixteen tools are read-only', () => {
+test('sixteen tools are read-only, and they are the reads', () => {
   // 2 invoice + 2 estimate + 1 payment + 3 company + 8 V3.
-  const readOnly = allTools.filter((t) => t.annotations?.readOnlyHint === true);
-  assert.equal(readOnly.length, 16);
+  const readOnly = allTools
+    .filter((t) => t.annotations?.readOnlyHint === true)
+    .map((t) => t.name)
+    .sort();
+  assert.deepEqual(readOnly, [
+    'smartbill_get_estimate_invoices',
+    'smartbill_get_estimate_pdf',
+    'smartbill_get_invoice_payment_status',
+    'smartbill_get_invoice_pdf',
+    'smartbill_get_payment_receipt_text',
+    'smartbill_get_series',
+    'smartbill_get_stocks',
+    'smartbill_get_tax_and_series',
+    'smartbill_v3_get_client',
+    'smartbill_v3_get_product',
+    'smartbill_v3_get_supplier',
+    'smartbill_v3_get_warehouse',
+    'smartbill_v3_list_clients',
+    'smartbill_v3_list_products',
+    'smartbill_v3_list_suppliers',
+    'smartbill_v3_list_warehouses',
+  ]);
 });
 
 test('there are 29 tools in total', () => {

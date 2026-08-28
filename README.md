@@ -11,7 +11,8 @@ npm install
 npm run build
 ```
 
-Requires Node 20 or newer.
+Requires Node 20 or newer to run the built server (also enough to build it — `tsc` doesn't need a
+newer Node). Running the test suite from source needs a newer Node — see Development.
 
 ## Configuration
 
@@ -133,6 +134,11 @@ supplied, to already be Base64-encoded.
 - **Deletes are irreversible.** For an invoice already sent to a client, issue a storno instead.
 
 ## Development
+
+Running the test suite needs **Node 22.18+ or 23.6+** — `npm test` executes `test/*.test.ts`
+directly via Node's native TypeScript type stripping, which shipped unflagged only from those
+versions. That's stricter than the Node 20 in Install: `npm run build` and `npm run typecheck` are
+just the `tsc` compiler and run fine there, but Node itself can't load a `.ts` file until 22.18/23.6.
 
 ```bash
 npm test          # node:test, no network
