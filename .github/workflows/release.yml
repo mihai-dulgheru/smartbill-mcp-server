@@ -3,7 +3,6 @@ name: Release
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:
 
 # Least privilege: the job only needs to read the repo and mint an OIDC token.
 # `id-token: write` is what makes `npm publish --provenance` possible — without it
@@ -17,9 +16,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # SHA-pinned: tags are mutable, and this job can publish.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           # Writes the .npmrc that OIDC trusted publishing relies on.
@@ -28,10 +28,27 @@ jobs:
 
       - run: npm ci
 
-      # Provenance requires a recent npm. Node 24 ships one, but pin the floor so a
-      # future runner image change cannot silently drop the attestation.
-      - name: Ensure npm supports provenance
-        run: npm install -g npm@latest
+      # Assert, do not install. `npm install -g npm@latest` would pull an unpinned,
+      # mutable package from the registry into a job holding id-token: write and publish
+      # rights, and run it before `npm publish`. Node 24 already ships npm 12, so check
+      # the floor instead and fail loudly if a runner image ever regresses.
+      - name: Verify npm supports trusted publishing and provenance
+        run: |
+          NPM_VERSION="$(npm --version)"
+          echo "npm $NPM_VERSION"
+          node -e '
+            const [have] = process.argv.slice(1);
+            const need = "11.5.1";
+            const cmp = (a, b) => {
+              const pa = a.split(".").map(Number), pb = b.split(".").map(Number);
+              for (let i = 0; i < 3; i++) if (pa[i] !== pb[i]) return pa[i] - pb[i];
+              return 0;
+            };
+            if (cmp(have, need) < 0) {
+              console.error(`::error::npm ${have} is below the ${need} needed for trusted publishing`);
+              process.exit(1);
+            }
+          ' "$NPM_VERSION"
 
       # A tag that disagrees with package.json publishes the wrong version under the
       # right name, which is not fixable after the fact. Fail before publishing.
