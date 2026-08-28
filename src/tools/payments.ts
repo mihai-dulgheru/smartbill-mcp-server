@@ -51,7 +51,8 @@ export const paymentTools: ToolDef[] = [
     api: 'v1',
     title: 'Delete receipt (chitanta)',
     description:
-      'Permanently delete a receipt by its series and number. IRREVERSIBLE. This is the only way to remove a Chitanta — smartbill_delete_payment does not accept that type.',
+      'Permanently delete a receipt by its series and number. IRREVERSIBLE. Only the most recent receipt in a series can normally be deleted. ' +
+      'This is the only way to remove a Chitanta — smartbill_delete_payment does not accept that type.',
     inputSchema: z.object({ cif: cifArg, ...documentRefSchema.shape }),
     annotations: { destructiveHint: true },
     run: withCif(async ({ client }, args, cif) => {

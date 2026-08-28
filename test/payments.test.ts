@@ -74,9 +74,10 @@ test('delete_payment omits the optional identifiers that were not supplied', asy
   assert.equal(url.searchParams.has('paymentValue'), false);
 });
 
-test('delete_payment rejects a Chitanta paymentType at the schema level', () => {
+test('delete_payment rejects Chitanta and Bon paymentTypes at the schema level', () => {
   const schema = tool('smartbill_delete_payment').inputSchema;
   assert.equal(schema.safeParse({ paymentType: 'Chitanta' }).success, false);
+  assert.equal(schema.safeParse({ paymentType: 'Bon' }).success, false);
   assert.equal(schema.safeParse({ paymentType: 'Ordin plata' }).success, true);
 });
 

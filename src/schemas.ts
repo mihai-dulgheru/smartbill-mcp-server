@@ -189,8 +189,8 @@ export const sendEmailRequestSchema = z.object({
   to: z.string().email().optional().describe('Defaults to the client email on record.'),
   cc: z.string().optional(),
   bcc: z.string().optional(),
-  subject: z.string().optional(),
-  bodyText: z.string().optional(),
+  subject: z.string().optional().describe('Email subject. Must be Base64-encoded, not raw text.'),
+  bodyText: z.string().optional().describe('Email body. Must be Base64-encoded, not raw text.'),
 });
 
 /** The series + number pair that identifies a V1 document. */

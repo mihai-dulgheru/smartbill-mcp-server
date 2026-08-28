@@ -7,7 +7,7 @@ export const companyTools: ToolDef[] = [
     name: 'smartbill_get_tax_and_series',
     operationId: 'getTaxAndSeries',
     api: 'v1',
-    title: 'Get VAT rates and company info',
+    title: 'Get VAT rates',
     description:
       'List the VAT rates configured in the SmartBill account, with their names and percentages. ' +
       'Call this before creating a document to get the exact `taxName` and `taxPercentage` values the account accepts — inventing them causes the document to be rejected.',
@@ -82,7 +82,7 @@ export const companyTools: ToolDef[] = [
     title: 'Email a document to a client',
     description:
       'Email an existing invoice or proforma to a client. Omit `to` to use the email address on the client record. ' +
-      'type must be "factura" or "proforma".',
+      'type must be "factura" or "proforma". `subject` and `bodyText`, when supplied, must be Base64-encoded — sending raw text wastes the call.',
     inputSchema: z.object({ cif: cifArg, document: sendEmailRequestSchema }),
     run: withCif(async ({ client }, args, cif) => {
       const document = args.document as Record<string, unknown>;
