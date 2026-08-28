@@ -1,6 +1,6 @@
 {
   "name": "smartbill-mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for the SmartBill Cloud API",
   "keywords": [
     "mcp",
