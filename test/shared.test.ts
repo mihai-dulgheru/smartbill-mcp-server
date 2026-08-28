@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { mkdtemp, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import type { SmartBillClient } from '../src/client.ts';
 import { loadConfig } from '../src/config.ts';
-import { resolveCif, savePdf, toCallToolResult } from '../src/tools/shared.ts';
+import { resolveCif, savePdf, toCallToolResult, withCif } from '../src/tools/shared.ts';
 
 test('resolveCif prefers the argument over the environment', () => {
   const config = loadConfig({ SMARTBILL_CIF: 'ENV' });
@@ -20,7 +21,20 @@ test('resolveCif errors when neither is present, naming both routes', () => {
   assert.notEqual(typeof result, 'string');
   if (typeof result !== 'string') {
     assert.match(result.hint ?? '', /SMARTBILL_CIF/);
+    assert.match(result.hint ?? '', /cif/);
   }
+});
+
+test('withCif makes no HTTP call when no cif is available from either the argument or the environment', async () => {
+  let called = false;
+  const run = withCif(async () => {
+    called = true;
+    return { ok: true, data: {} };
+  });
+  const config = loadConfig({ SMARTBILL_CIF: '' });
+  const outcome = await run({ client: {} as unknown as SmartBillClient, config }, {});
+  assert.equal(outcome.ok, false);
+  assert.equal(called, false);
 });
 
 test('toCallToolResult marks failures with isError and renders the param', () => {
@@ -42,6 +56,7 @@ test('toCallToolResult renders every error of a multi-error response', () => {
       details: [{ param: 'name' }, { param: 'email' }],
     },
   });
+  assert.match(r.content[0]!.text, /name/);
   assert.match(r.content[0]!.text, /email/);
 });
 
@@ -57,4 +72,15 @@ test('savePdf writes the bytes and sanitises the filename', async () => {
   assert.equal(result.bytes, 4);
   assert.equal(result.path, join(dir, 'fac_2026_001.pdf'));
   assert.equal((await readFile(result.path)).toString('latin1'), '%PDF');
+});
+
+test('savePdf rejects a filename that sanitises to ".." rather than writing outside dir', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'sb-'));
+  await assert.rejects(() => savePdf(dir, '..', new Uint8Array([1])));
+});
+
+test('savePdf keeps a slash-based traversal attempt inside dir', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'sb-'));
+  const result = await savePdf(dir, '../../etc/passwd', new Uint8Array([1]));
+  assert.equal(result.path, join(dir, '.._.._etc_passwd'));
 });

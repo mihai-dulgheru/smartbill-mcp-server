@@ -1,5 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, relative, resolve, sep } from 'node:path';
 import * as z from 'zod';
 import type { ClientResult, SmartBillClient } from '../client.ts';
 import type { Config } from '../config.ts';
@@ -46,6 +46,22 @@ export function resolveCif(config: Config, cif?: string): string | SmartBillErro
   return resolved;
 }
 
+/**
+ * Wraps a tool `run` so the cif guard lives in one place instead of being copy-pasted into every
+ * tool. "Never make an HTTP call without a resolved cif" is a correctness invariant, not a style
+ * preference — a copy-pasted guard is one a future tool author can silently omit. This produces a
+ * `ToolDef['run']`; it does not change that type.
+ */
+export function withCif(
+  run: (ctx: ToolContext, args: Record<string, unknown>, cif: string) => Promise<ClientResult | ToolOutcome>,
+): ToolDef['run'] {
+  return async (ctx, args) => {
+    const cif = resolveCif(ctx.config, args.cif as string | undefined);
+    if (typeof cif !== 'string') return { ok: false, error: cif };
+    return run(ctx, args, cif);
+  };
+}
+
 type CallToolResult = {
   content: Array<{ type: 'text'; text: string }>;
   structuredContent?: Record<string, unknown>;
@@ -79,15 +95,33 @@ export function toCallToolResult(outcome: ClientResult | ToolOutcome): CallToolR
   return { content: [{ type: 'text', text }], structuredContent: structured };
 }
 
-/** Writes a document to disk and returns its path — PDFs are never inlined into model context. */
+/**
+ * Writes a document to disk and returns its path — PDFs are never inlined into model context.
+ *
+ * Defends its own contract rather than relying on callers to pass safe names. The whitelist below
+ * strips path separators, but a sanitised name of exactly "." or ".." would still resolve to the
+ * download directory itself or its parent — both are rejected explicitly. The containment check
+ * afterwards is a second, independent layer: it still holds even if the whitelist regex is ever
+ * loosened by a future edit.
+ */
 export async function savePdf(
   dir: string,
   filename: string,
   bytes: Uint8Array,
 ): Promise<{ path: string; bytes: number }> {
-  await mkdir(dir, { recursive: true });
   const safe = filename.replace(/[^A-Za-z0-9._-]/g, '_');
-  const path = join(dir, safe);
+  if (safe === '.' || safe === '..') {
+    throw new Error(`savePdf: refusing to write unsafe filename "${filename}" (sanitises to "${safe}")`);
+  }
+
+  const resolvedDir = resolve(dir);
+  const path = resolve(resolvedDir, safe);
+  const rel = relative(resolvedDir, path);
+  if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) {
+    throw new Error(`savePdf: "${filename}" would write outside the download directory`);
+  }
+
+  await mkdir(resolvedDir, { recursive: true });
   await writeFile(path, bytes);
   return { path, bytes: bytes.length };
 }
