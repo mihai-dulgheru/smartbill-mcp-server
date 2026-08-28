@@ -44,14 +44,20 @@ export function normalizeError(
 ): SmartBillError | null {
   // An HTML body means the request never reached the JSON layer. Per the SmartBill docs a 500
   // with an HTML body is almost always a misspelled field name, not a real server fault.
-  if (contentType.includes('text/html')) {
+  if (contentType.toLowerCase().includes('text/html')) {
+    let hint: string | undefined;
+    if (httpStatus === 500) {
+      hint = 'This usually means a field name in the request body is misspelled. Check every field name against the OpenAPI schema before retrying.';
+    } else {
+      hint = 'This response came from a proxy or gateway, not the SmartBill application. Your request parameters are not implicated. It is worth retrying.';
+    }
     return {
       message:
         httpStatus === 500
           ? 'SmartBill returned an HTML error page.'
           : `SmartBill returned an HTML response (HTTP ${httpStatus}).`,
       httpStatus,
-      hint: 'This usually means a field name in the request body is misspelled. Check every field name against the OpenAPI schema before retrying.',
+      hint,
     };
   }
 

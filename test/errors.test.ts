@@ -104,3 +104,18 @@ test('networkError reports httpStatus 0', () => {
   assert.equal(err.httpStatus, 0);
   assert.match(err.message, /ECONNREFUSED/);
 });
+
+test('a 502 gateway error with HTML body gets a gateway hint, not a field-name hint', () => {
+  const err = normalizeError(502, 'text/html;charset=utf-8', '<html><body>502 Bad Gateway</body></html>');
+  assert.ok(err);
+  assert.equal(err.httpStatus, 502);
+  assert.match(err.hint ?? '', /gateway|proxy/i);
+  assert.doesNotMatch(err.hint ?? '', /field name/i);
+});
+
+test('an HTML body with mixed-case Content-Type header is still detected', () => {
+  const err = normalizeError(500, 'Text/HTML;charset=utf-8', '<html><body>error</body></html>');
+  assert.ok(err);
+  assert.equal(err.httpStatus, 500);
+  assert.match(err.hint ?? '', /field name/i);
+});
