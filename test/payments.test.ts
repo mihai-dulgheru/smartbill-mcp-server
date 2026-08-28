@@ -100,6 +100,20 @@ test('the receipt-text tool sends id as a query parameter', async () => {
   assert.equal(new URL(calls[0]!.url).searchParams.get('id'), '20363');
 });
 
+test('the receipt-text tool on a 500 HTML response gets an invalid-id hint, not the misspelled-field hint', async () => {
+  const html = new Response('<html><body>500</body></html>', {
+    status: 500,
+    headers: { 'content-type': 'text/html' },
+  });
+  const { ctx } = harness(html);
+  const outcome = await tool('smartbill_get_payment_receipt_text').run(ctx, { id: 999999 });
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) {
+    assert.match(outcome.error.hint ?? '', /invalid/i);
+    assert.doesNotMatch(outcome.error.hint ?? '', /field name/i);
+  }
+});
+
 test('a tool called with no cif anywhere fails without an HTTP call', async () => {
   const { ctx, calls } = harness(json({ errorText: '' }), { SMARTBILL_CIF: '' });
   const outcome = await tool('smartbill_delete_receipt').run(ctx, { seriesname: 'CH', number: '7' });

@@ -51,7 +51,7 @@ export const productSchema = z.object({
     'Unit price. EXCLUDES VAT unless isTaxIncluded is true — this is the most common source of wrong totals.',
   ),
   measuringUnitName: z.string().describe(
-    'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly — read it from smartbill_get_tax_and_series.',
+    'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly — GET /tax does not return units, so read it from smartbill_get_stocks (list[].products[].measuringUnit) or smartbill_v3_list_products/smartbill_v3_get_product (measuringUnitName), or ask the user.',
   ),
   taxPercentage: z.number().describe('VAT percentage as a bare number, e.g. 21. Never "21%".'),
   code: z.string().optional().describe('SKU. Required if your company has the "Foloseste cod produs" setting enabled in SmartBill Cloud, otherwise optional.'),

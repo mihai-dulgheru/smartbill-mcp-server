@@ -1,11 +1,11 @@
 import * as z from 'zod';
 import { documentRefSchema, invoiceRequestSchema } from '../schemas.ts';
-import { cifArg, savePdf, withCif, type ToolDef } from './shared.ts';
+import { cifArg, savePdf, withCif, withStatusHint, type ToolDef } from './shared.ts';
 
 const docRef = { cif: cifArg, ...documentRefSchema.shape };
 
 const ACCOUNT_STRINGS =
-  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly — read them from smartbill_get_series and smartbill_get_tax_and_series rather than guessing.';
+  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly — never guess them. seriesName comes from smartbill_get_series, taxName from smartbill_get_tax_and_series, and measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
 
 export const invoiceTools: ToolDef[] = [
   {
@@ -19,6 +19,7 @@ export const invoiceTools: ToolDef[] = [
       ' Product prices EXCLUDE VAT unless isTaxIncluded is true. taxPercentage is a bare number (21), never a string ("21%"). ' +
       'On success the response carries `number`, `series`, `documentId` and `documentViewUrl` — the last is a public PDF link safe to send to the client.',
     inputSchema: z.object({ cif: cifArg, invoice: invoiceRequestSchema }),
+    annotations: { destructiveHint: false, idempotentHint: false },
     run: withCif(async ({ client }, args, cif) => {
       const invoice = args.invoice as Record<string, unknown>;
       // companyVatCode last: unconditional override of any (impossible, but future-proof) same-named
@@ -45,6 +46,7 @@ export const invoiceTools: ToolDef[] = [
       number: z.string().describe('Number of the ORIGINAL invoice.'),
       issueDate: z.string().optional().describe('yyyy-MM-dd. Defaults to today.'),
     }),
+    annotations: { destructiveHint: false, idempotentHint: false },
     run: withCif(async ({ client }, args, cif) => {
       return client.request({
         api: 'v1',
@@ -65,17 +67,22 @@ export const invoiceTools: ToolDef[] = [
     api: 'v1',
     title: 'Download invoice PDF',
     description:
-      'Download an invoice as PDF. The file is written to the server download directory and the tool returns its path and size — the PDF bytes are never inlined.',
+      'Download an invoice as PDF. The file is written to the server download directory and the tool returns its path and size — the PDF bytes are never inlined. ' +
+      'This endpoint returns no JSON error: any missing parameter or nonexistent invoice comes back as a 502 with an HTML body — a 502 here means check `seriesname`, `number` and that the invoice exists, not a proxy fluke worth retrying.',
     inputSchema: z.object(docRef),
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client, config }, args, cif) => {
-      const res = await client.request({
-        api: 'v1',
-        method: 'GET',
-        path: '/invoice/pdf',
-        query: { cif, seriesname: args.seriesname as string, number: args.number as string },
-        binary: true,
-      });
+      const res = withStatusHint(
+        await client.request({
+          api: 'v1',
+          method: 'GET',
+          path: '/invoice/pdf',
+          query: { cif, seriesname: args.seriesname as string, number: args.number as string },
+          binary: true,
+        }),
+        502,
+        'This endpoint returns no JSON error: a 502 means `seriesname` or `number` is missing, or the invoice does not exist. Verify those rather than retrying.',
+      );
       if (!res.ok) return res;
       // A defined-but-empty body is just as unusable as a missing one — treat it the same way
       // rather than silently saving a 0-byte "PDF".
@@ -84,7 +91,7 @@ export const invoiceTools: ToolDef[] = [
       }
       const saved = await savePdf(
         config.downloadDir,
-        `${args.seriesname}-${args.number}.pdf`,
+        `${cif}-${args.seriesname}-${args.number}.pdf`,
         res.bytes,
       );
       return { ok: true, data: saved };
@@ -124,7 +131,6 @@ export const invoiceTools: ToolDef[] = [
         method: 'PUT',
         path: '/invoice/cancel',
         query: { cif, seriesname: args.seriesname as string, number: args.number as string },
-        errorTextIsInformational: true,
       });
     }),
   },
@@ -144,7 +150,6 @@ export const invoiceTools: ToolDef[] = [
         method: 'PUT',
         path: '/invoice/restore',
         query: { cif, seriesname: args.seriesname as string, number: args.number as string },
-        errorTextIsInformational: true,
       });
     }),
   },

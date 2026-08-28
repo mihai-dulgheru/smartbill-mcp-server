@@ -92,10 +92,24 @@ test('cancel and delete build the right method and query', async () => {
 });
 
 test('cancel_invoice against an already-cancelled invoice surfaces success, not a tool error', async () => {
-  const { ctx } = harness(json({ errorText: 'Factura este deja anulata.' }));
+  // Per the spec's own 200 example, the idempotent case carries an EMPTY errorText with the
+  // informational text in `message` — errorText is never non-empty on this documented path.
+  const { ctx } = harness(json({ errorText: '', message: 'Factura fac3744 este deja anulata.' }));
   const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '3593' });
   assert.equal(outcome.ok, true);
-  if (outcome.ok) assert.match(String((outcome.data as { errorText: string }).errorText), /anulata/);
+  if (outcome.ok) assert.match(String((outcome.data as { message: string }).message), /anulata/);
+});
+
+test('cancel_invoice on a 200 with a genuinely non-empty errorText is still a tool error', async () => {
+  // This is the regression guard for the removal of errorTextIsInformational: a real business
+  // failure riding a 200 (e.g. a rights error) must not be reported as success just because
+  // cancel/restore are idempotent in the ordinary case.
+  const { ctx } = harness(json({ errorText: 'Nu aveti dreptul de a adauga facturi pe seria selectata.' }));
+  const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '3593' });
+  assert.equal(outcome.ok, false);
+  const result = toCallToolResult(outcome);
+  assert.equal(result.isError, true);
+  assert.match(result.content[0]!.text, /dreptul/);
 });
 
 test('only delete_invoice is marked destructive', () => {
@@ -103,7 +117,7 @@ test('only delete_invoice is marked destructive', () => {
   assert.deepEqual(destructive.map((t) => t.name), ['smartbill_delete_invoice']);
 });
 
-test('get_invoice_pdf writes a file and returns its path', async () => {
+test('get_invoice_pdf writes a file named with the cif, series and number', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'sb-inv-'));
   const pdf = new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
     status: 200,
@@ -117,8 +131,24 @@ test('get_invoice_pdf writes a file and returns its path', async () => {
   assert.equal(outcome.ok, true);
   if (outcome.ok) {
     const data = outcome.data as { path: string; bytes: number };
-    assert.equal(data.path, join(dir, 'fac-3593.pdf'));
+    // Without the cif, two companies with the same series and number would overwrite each
+    // other's PDF in one download directory.
+    assert.equal(data.path, join(dir, 'RO123-fac-3593.pdf'));
     assert.equal(data.bytes, 4);
+  }
+});
+
+test('get_invoice_pdf on a 502 HTML response gets the missing-parameter hint, not the generic gateway hint', async () => {
+  const gateway = new Response('<html><body>502 Bad Gateway</body></html>', {
+    status: 502,
+    headers: { 'content-type': 'text/html' },
+  });
+  const { ctx } = harness(gateway);
+  const outcome = await tool('smartbill_get_invoice_pdf').run(ctx, { seriesname: 'fac', number: '3593' });
+  assert.equal(outcome.ok, false);
+  if (!outcome.ok) {
+    assert.match(outcome.error.hint ?? '', /seriesname.*number|number.*seriesname/i);
+    assert.doesNotMatch(outcome.error.hint ?? '', /worth retrying/i);
   }
 });
 

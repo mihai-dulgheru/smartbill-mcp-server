@@ -86,6 +86,15 @@ test('cancel is PUT and delete is DELETE', async () => {
   assert.equal(calls[1]!.init.method, 'DELETE');
 });
 
+test('cancel_estimate on a 200 with a genuinely non-empty errorText is still a tool error', async () => {
+  // Same regression guard as cancel_invoice: cancelEstimate's spec 200 example is idempotent via
+  // an empty errorText plus a message, not via errorTextIsInformational, so a real business
+  // failure riding a 200 must still surface.
+  const { ctx } = harness(json({ errorText: 'Nu aveti dreptul de a anula aceasta proforma.' }));
+  const outcome = await tool('smartbill_cancel_estimate').run(ctx, { seriesname: 'pro', number: '227' });
+  assert.equal(outcome.ok, false);
+});
+
 test('only delete_estimate is marked destructive; cancel and restore are idempotent, not destructive', () => {
   const destructive = estimateTools.filter((t) => t.annotations?.destructiveHint === true);
   assert.deepEqual(destructive.map((t) => t.name), ['smartbill_delete_estimate']);
@@ -96,7 +105,7 @@ test('only delete_estimate is marked destructive; cancel and restore are idempot
   }
 });
 
-test('get_estimate_pdf writes a file and returns its path', async () => {
+test('get_estimate_pdf writes a file named with the cif, series and number', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'sb-est-'));
   const pdf = new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
     status: 200,
@@ -107,7 +116,7 @@ test('get_estimate_pdf writes a file and returns its path', async () => {
   assert.equal(outcome.ok, true);
   if (outcome.ok) {
     const data = outcome.data as { path: string; bytes: number };
-    assert.equal(data.path, join(dir, 'pro-227.pdf'));
+    assert.equal(data.path, join(dir, 'RO123-pro-227.pdf'));
     assert.equal(data.bytes, 4);
   }
 });

@@ -128,9 +128,12 @@ supplied, to already be Base64-encoded.
 - **PDFs go to disk**, not into the conversation. They are written to `SMARTBILL_DOWNLOAD_DIR` with
   a sanitised filename that cannot escape that directory, and the tool returns the resulting path
   and byte count.
-- **Rate limits are enforced client-side.** V1 allows 30 requests per 10 seconds and blocks the
-  token for 10 minutes on a breach; V3 allows 60 per 10 seconds. The server delays requests rather
-  than letting either limit be breached.
+- **Rate limits are tracked per server process.** V1 allows 30 requests per 10 seconds and blocks
+  the token for 10 minutes on a breach; V3 allows 60 per 10 seconds. A single server process delays
+  its own requests rather than breaching either limit, and also backs off when the API's own
+  `X-RateLimit-Remaining` header reports the window exhausted. The limit itself is per token and
+  cumulative across whatever is using it, though: several MCP client sessions (or anything else)
+  sharing one token each track only their own requests, so together they can still breach it.
 - **Deletes are irreversible.** For an invoice already sent to a client, issue a storno instead.
 
 ## Development

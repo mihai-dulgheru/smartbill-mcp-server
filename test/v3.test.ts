@@ -80,6 +80,21 @@ test('after and before together are rejected without an HTTP call', async () => 
   assert.equal(calls.length, 0);
 });
 
+test('get tools reject an id with the wrong prefix, without an HTTP call', async () => {
+  const { ctx, calls } = harness(json({ id: 'ware_abc' }));
+  const outcome = await tool('smartbill_v3_get_warehouse').run(ctx, { id: 'cus_wrong_resource' });
+  assert.equal(outcome.ok, false);
+  assert.equal(calls.length, 0);
+  if (!outcome.ok) assert.equal(outcome.error.code, 'malformed_id');
+});
+
+test('get tools reject a path-traversal id like ".." instead of letting it collapse onto another endpoint', async () => {
+  const { ctx, calls } = harness(json({ id: 'ware_abc' }));
+  const outcome = await tool('smartbill_v3_get_warehouse').run(ctx, { id: '..' });
+  assert.equal(outcome.ok, false);
+  assert.equal(calls.length, 0);
+});
+
 test('warehouses accept only the name filter', () => {
   const schema = tool('smartbill_v3_list_warehouses').inputSchema;
   assert.equal(schema.safeParse({ name: 'Depozit' }).success, true);

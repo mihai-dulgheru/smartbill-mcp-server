@@ -4,7 +4,8 @@ import { cifArg, withCif, type ToolDef } from './shared.ts';
 
 const PAGINATION_NOTE =
   'Cursor pagination: limit is 1-100 (default 20); `after` and `before` are ids and are mutually exclusive. ' +
-  'pagination.next is a complete URL that already carries the filters — when it is null the listing is finished, even if the last page filled exactly to limit.';
+  'pagination.next is a complete URL that already carries the filters — when it is null the listing is finished, even if the last page filled exactly to limit. ' +
+  'No tool can fetch that URL directly: to get the next page yourself, call this tool again passing the last item\'s `id` as `after`.';
 
 type Resource = {
   /** Path segment and English plural used in names and text. */
@@ -118,7 +119,7 @@ function getTool(resource: Resource): ToolDef {
     operationId: resource.getOperationId,
     api: 'v3',
     title: `Get ${resource.singular} (V3)`,
-    description: `${resource.getDescription} The id must start with \`${resource.idPrefix}\` — an id from another resource returns 400 malformed_id.`,
+    description: `${resource.getDescription} The id must start with \`${resource.idPrefix}\` — an id with any other prefix is rejected as malformed_id before any API call is made.`,
     inputSchema: z.object({
       cif: cifArg,
       id: z.string().describe(`Resource id, starting with ${resource.idPrefix}.`),
@@ -126,6 +127,20 @@ function getTool(resource: Resource): ToolDef {
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client }, args, cif) => {
       const id = args.id as string;
+      // A prefix mismatch — including a path-traversal attempt like ".." or "." — would otherwise
+      // reach `new URL()` and normalise onto some other, wrong endpoint instead of failing loudly.
+      // The spec documents this exact rejection for a wrong-prefix id, so reproduce it locally.
+      if (!id.startsWith(resource.idPrefix)) {
+        return {
+          ok: false,
+          error: {
+            message: `ID must start with ${resource.idPrefix}`,
+            code: 'malformed_id',
+            httpStatus: 0,
+            hint: `Pass a ${resource.singular} id as returned by smartbill_v3_list_${resource.plural} (it starts with ${resource.idPrefix}).`,
+          },
+        };
+      }
       return client.request({
         api: 'v3',
         method: 'GET',

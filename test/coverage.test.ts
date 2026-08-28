@@ -116,3 +116,22 @@ test('sixteen tools are read-only, and they are the reads', () => {
 test('there are 29 tools in total', () => {
   assert.equal(allTools.length, 29);
 });
+
+test('the five non-idempotent write tools explicitly declare non-destructive, non-idempotent annotations', () => {
+  // These would otherwise inherit the MCP default destructiveHint: true, making issuing an
+  // invoice look more dangerous than cancelling one (which explicitly declares destructiveHint:
+  // false).
+  const names = [
+    'smartbill_create_invoice',
+    'smartbill_create_storno_invoice',
+    'smartbill_create_estimate',
+    'smartbill_create_payment',
+    'smartbill_send_document_email',
+  ];
+  for (const name of names) {
+    const t = allTools.find((x) => x.name === name);
+    assert.ok(t, `${name} not found`);
+    assert.equal(t!.annotations?.destructiveHint, false, `${name} should declare destructiveHint: false`);
+    assert.equal(t!.annotations?.idempotentHint, false, `${name} should declare idempotentHint: false`);
+  }
+});

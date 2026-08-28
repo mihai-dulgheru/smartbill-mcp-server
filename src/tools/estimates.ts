@@ -2,13 +2,19 @@ import * as z from 'zod';
 import { documentRefSchema, estimateRequestSchema } from '../schemas.ts';
 import { cifArg, savePdf, withCif, type ToolDef } from './shared.ts';
 
+const ACCOUNT_STRINGS =
+  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly and are never guessed — seriesName from smartbill_get_series, taxName from smartbill_get_tax_and_series, measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
+
 const docRef = { cif: cifArg, ...documentRefSchema.shape };
 
 /**
  * Every estimate tool but create and pdf is the same shape: cif + series + number on one path.
- * `errorTextIsInformational` is opt-in per call site — only the three operations the spec
- * documents as idempotent/informational-on-200 (getEstimateInvoices, cancelEstimate,
- * restoreEstimate) pass it; deleteEstimate does not, so a real failure there still surfaces.
+ * `errorTextIsInformational` is opt-in per call site — of the operations here, only
+ * getEstimateInvoices documents a 200 where `errorText` itself carries a purely informational
+ * message ("...nu a fost facturata."), so only it passes the flag. cancelEstimate and
+ * restoreEstimate are idempotent too, but per their spec examples that idempotency shows up as
+ * `errorText: ""` with the message in `message` — an ordinary success already, needing no flag.
+ * deleteEstimate gets neither: a real failure there must still surface.
  */
 const simple = (
   name: string,
@@ -45,9 +51,11 @@ export const estimateTools: ToolDef[] = [
     api: 'v1',
     title: 'Create proforma (estimate)',
     description:
-      'Issue a proforma / estimate. Same product and client rules as an invoice: seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly (read them from smartbill_get_series and smartbill_get_tax_and_series), prices EXCLUDE VAT unless isTaxIncluded is true, and taxPercentage is a bare number. ' +
-      'A proforma does not generate accounting entries; convert it with smartbill_create_invoice using useEstimateDetails.',
+      'Issue a proforma / estimate. Same product and client rules as an invoice: prices EXCLUDE VAT unless isTaxIncluded is true, and taxPercentage is a bare number. ' +
+      ACCOUNT_STRINGS +
+      ' A proforma does not generate accounting entries; convert it with smartbill_create_invoice using useEstimateDetails.',
     inputSchema: z.object({ cif: cifArg, estimate: estimateRequestSchema }),
+    annotations: { destructiveHint: false, idempotentHint: false },
     run: withCif(async ({ client }, args, cif) => {
       const estimate = args.estimate as Record<string, unknown>;
       // companyVatCode last: unconditional override of any (impossible, but future-proof) same-named
@@ -85,7 +93,7 @@ export const estimateTools: ToolDef[] = [
       }
       const saved = await savePdf(
         config.downloadDir,
-        `${args.seriesname}-${args.number}.pdf`,
+        `${cif}-${args.seriesname}-${args.number}.pdf`,
         res.bytes,
       );
       return { ok: true, data: saved };
@@ -112,7 +120,6 @@ export const estimateTools: ToolDef[] = [
     'PUT',
     '/estimate/cancel',
     { destructiveHint: false, idempotentHint: true },
-    true,
   ),
   simple(
     'smartbill_restore_estimate',
@@ -123,7 +130,6 @@ export const estimateTools: ToolDef[] = [
     'PUT',
     '/estimate/restore',
     { destructiveHint: false, idempotentHint: true },
-    true,
   ),
   simple(
     'smartbill_delete_estimate',

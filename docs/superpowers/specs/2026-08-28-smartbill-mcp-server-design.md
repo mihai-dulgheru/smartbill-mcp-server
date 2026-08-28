@@ -271,8 +271,10 @@ Tool descriptions are where the §2.1 behaviours land. Each description states w
 then any trap that applies to it:
 
 - Creation tools state that prices exclude VAT unless `isTaxIncluded` is set, and that
-  `seriesName`, `taxName` and `measuringUnitName` must come from the account — pointing at
-  `smartbill_get_series` and `smartbill_get_tax_and_series` rather than being guessed.
+  `seriesName`, `taxName` and `measuringUnitName` must come from the account rather than being
+  guessed — pointing at `smartbill_get_series` for `seriesName`, `smartbill_get_tax_and_series` for
+  `taxName`, and `smartbill_get_stocks` or `smartbill_v3_list_products` (or asking the user) for
+  `measuringUnitName`, since no V1 endpoint returns units.
 - `smartbill_delete_payment` states that `paymentType` must match the payment actually recorded on
   the invoice, and cannot be `Chitanta` or `Bon fiscal`.
 - V3 list tools state the cursor rules: `after` and `before` are mutually exclusive, `limit` is
