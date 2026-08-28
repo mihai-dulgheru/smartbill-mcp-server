@@ -35,7 +35,10 @@ const tool = (name: string) => {
 };
 
 const json = (body: unknown) =>
-  new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 
 test('there are exactly four company tools, all smartbill_-prefixed', () => {
   assert.equal(companyTools.length, 4);
@@ -100,7 +103,9 @@ test('companyVatCode is appended last, so it cannot be spoofed via the document 
 });
 
 test('the three read tools are marked read-only and email is not', () => {
-  const readOnly = companyTools.filter((t) => t.annotations?.readOnlyHint === true).map((t) => t.name);
+  const readOnly = companyTools
+    .filter((t) => t.annotations?.readOnlyHint === true)
+    .map((t) => t.name);
   assert.equal(readOnly.length, 3);
   assert.equal(tool('smartbill_send_document_email').annotations?.readOnlyHint, undefined);
 });

@@ -35,7 +35,10 @@ const tool = (name: string) => {
 };
 
 const json = (body: unknown) =>
-  new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 
 test('there are exactly four payment tools, all smartbill_-prefixed', () => {
   assert.equal(paymentTools.length, 4);
@@ -45,7 +48,11 @@ test('there are exactly four payment tools, all smartbill_-prefixed', () => {
 test('create_payment injects companyVatCode', async () => {
   const { ctx, calls } = harness(json({ errorText: '', number: '7' }));
   await tool('smartbill_create_payment').run(ctx, {
-    payment: { type: 'Ordin plata', value: 119, invoicesList: [{ seriesName: 'fac', number: '3593' }] },
+    payment: {
+      type: 'Ordin plata',
+      value: 119,
+      invoicesList: [{ seriesName: 'fac', number: '3593' }],
+    },
   });
   const body = JSON.parse(String(calls[0]!.init.body));
   assert.equal(body.companyVatCode, 'RO123');
@@ -89,7 +96,9 @@ test('delete_receipt targets /payment/chitanta', async () => {
 });
 
 test('both delete tools are marked destructive and the read tool is read-only', () => {
-  const destructive = paymentTools.filter((t) => t.annotations?.destructiveHint === true).map((t) => t.name);
+  const destructive = paymentTools
+    .filter((t) => t.annotations?.destructiveHint === true)
+    .map((t) => t.name);
   assert.deepEqual(destructive.sort(), ['smartbill_delete_payment', 'smartbill_delete_receipt']);
   assert.equal(tool('smartbill_get_payment_receipt_text').annotations?.readOnlyHint, true);
 });
@@ -116,7 +125,10 @@ test('the receipt-text tool on a 500 HTML response gets an invalid-id hint, not 
 
 test('a tool called with no cif anywhere fails without an HTTP call', async () => {
   const { ctx, calls } = harness(json({ errorText: '' }), { SMARTBILL_CIF: '' });
-  const outcome = await tool('smartbill_delete_receipt').run(ctx, { seriesname: 'CH', number: '7' });
+  const outcome = await tool('smartbill_delete_receipt').run(ctx, {
+    seriesname: 'CH',
+    number: '7',
+  });
   assert.equal(outcome.ok, false);
   assert.equal(calls.length, 0);
 });

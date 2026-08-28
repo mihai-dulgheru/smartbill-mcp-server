@@ -28,7 +28,10 @@ export function stripHtml(text: string): string {
   // The leading sentence was empty — the text starts with a tag (e.g. an error wrapped entirely
   // in <b>). Falling through to '' would surface a blank message with no code or param, so strip
   // every tag in the string instead of just truncating at the first one.
-  return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  return text
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 type ProblemItem = { code?: string; message?: string; param?: string; docUrl?: string };
@@ -58,9 +61,11 @@ export function normalizeError(
   if (contentType.toLowerCase().includes('text/html')) {
     let hint: string | undefined;
     if (httpStatus === 500) {
-      hint = 'This usually means a field name in the request body is misspelled. Check every field name against the OpenAPI schema before retrying.';
+      hint =
+        'This usually means a field name in the request body is misspelled. Check every field name against the OpenAPI schema before retrying.';
     } else {
-      hint = 'This response came from a proxy or gateway, not the SmartBill application. Your request parameters are not implicated. It is worth retrying.';
+      hint =
+        'This response came from a proxy or gateway, not the SmartBill application. Your request parameters are not implicated. It is worth retrying.';
     }
     return {
       message:

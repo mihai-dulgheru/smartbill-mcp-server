@@ -9,7 +9,10 @@ type Spec = { paths: Record<string, Record<string, SpecOperation>> };
 const METHODS = ['get', 'post', 'put', 'delete', 'patch'];
 
 async function loadSpec(): Promise<Spec> {
-  const raw = await readFile(new URL('../docs/smartbill-openapi-spec.json', import.meta.url), 'utf8');
+  const raw = await readFile(
+    new URL('../docs/smartbill-openapi-spec.json', import.meta.url),
+    'utf8',
+  );
   return JSON.parse(raw) as Spec;
 }
 
@@ -131,7 +134,15 @@ test('the five non-idempotent write tools explicitly declare non-destructive, no
   for (const name of names) {
     const t = allTools.find((x) => x.name === name);
     assert.ok(t, `${name} not found`);
-    assert.equal(t!.annotations?.destructiveHint, false, `${name} should declare destructiveHint: false`);
-    assert.equal(t!.annotations?.idempotentHint, false, `${name} should declare idempotentHint: false`);
+    assert.equal(
+      t!.annotations?.destructiveHint,
+      false,
+      `${name} should declare destructiveHint: false`,
+    );
+    assert.equal(
+      t!.annotations?.idempotentHint,
+      false,
+      `${name} should declare idempotentHint: false`,
+    );
   }
 });

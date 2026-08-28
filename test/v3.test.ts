@@ -53,7 +53,10 @@ test('list tools build the /v3/companies/{cif}/{resource} path', async () => {
 test('get tools append the id to the path', async () => {
   const { ctx, calls } = harness(json({ id: 'ware_abc', name: 'Depozit' }));
   await tool('smartbill_v3_get_warehouse').run(ctx, { id: 'ware_abc' });
-  assert.equal(new URL(calls[0]!.url).pathname, '/SBORO/api/v3/companies/RO123/warehouses/ware_abc');
+  assert.equal(
+    new URL(calls[0]!.url).pathname,
+    '/SBORO/api/v3/companies/RO123/warehouses/ware_abc',
+  );
 });
 
 test('V3 uses Bearer auth', async () => {
@@ -75,7 +78,10 @@ test('pagination and filter parameters are forwarded, absent ones omitted', asyn
 
 test('after and before together are rejected without an HTTP call', async () => {
   const { ctx, calls } = harness(json({ items: [] }));
-  const outcome = await tool('smartbill_v3_list_clients').run(ctx, { after: 'cus_a', before: 'cus_b' });
+  const outcome = await tool('smartbill_v3_list_clients').run(ctx, {
+    after: 'cus_a',
+    before: 'cus_b',
+  });
   assert.equal(outcome.ok, false);
   assert.equal(calls.length, 0);
 });

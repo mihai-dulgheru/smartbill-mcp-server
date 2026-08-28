@@ -38,7 +38,10 @@ const tool = (name: string) => {
 };
 
 const json = (body: unknown) =>
-  new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+  new Response(JSON.stringify(body), {
+    status: 200,
+    headers: { 'content-type': 'application/json' },
+  });
 
 test('there are exactly six estimate tools, all smartbill_-prefixed', () => {
   assert.equal(estimateTools.length, 6);
@@ -51,7 +54,9 @@ test('create_estimate posts to /estimate/v2 with the injected cif', async () => 
     estimate: {
       seriesName: 'pro',
       client: { name: 'X SRL', country: 'Romania' },
-      products: [{ name: 'P', quantity: 1, price: 50, measuringUnitName: 'buc', taxPercentage: 21 }],
+      products: [
+        { name: 'P', quantity: 1, price: 50, measuringUnitName: 'buc', taxPercentage: 21 },
+      ],
     },
   });
   assert.equal(new URL(calls[0]!.url).pathname, '/SBORO/api/estimate/v2');
@@ -91,13 +96,19 @@ test('cancel_estimate on a 200 with a genuinely non-empty errorText is still a t
   // an empty errorText plus a message, not via errorTextIsInformational, so a real business
   // failure riding a 200 must still surface.
   const { ctx } = harness(json({ errorText: 'Nu aveti dreptul de a anula aceasta proforma.' }));
-  const outcome = await tool('smartbill_cancel_estimate').run(ctx, { seriesname: 'pro', number: '227' });
+  const outcome = await tool('smartbill_cancel_estimate').run(ctx, {
+    seriesname: 'pro',
+    number: '227',
+  });
   assert.equal(outcome.ok, false);
 });
 
 test('only delete_estimate is marked destructive; cancel and restore are idempotent, not destructive', () => {
   const destructive = estimateTools.filter((t) => t.annotations?.destructiveHint === true);
-  assert.deepEqual(destructive.map((t) => t.name), ['smartbill_delete_estimate']);
+  assert.deepEqual(
+    destructive.map((t) => t.name),
+    ['smartbill_delete_estimate'],
+  );
 
   for (const name of ['smartbill_cancel_estimate', 'smartbill_restore_estimate']) {
     assert.equal(tool(name).annotations?.destructiveHint, false);
@@ -112,7 +123,10 @@ test('get_estimate_pdf writes a file named with the cif, series and number', asy
     headers: { 'content-type': 'application/octet-stream' },
   });
   const { ctx } = harness(pdf, { SMARTBILL_DOWNLOAD_DIR: dir });
-  const outcome = await tool('smartbill_get_estimate_pdf').run(ctx, { seriesname: 'pro', number: '227' });
+  const outcome = await tool('smartbill_get_estimate_pdf').run(ctx, {
+    seriesname: 'pro',
+    number: '227',
+  });
   assert.equal(outcome.ok, true);
   if (outcome.ok) {
     const data = outcome.data as { path: string; bytes: number };
@@ -127,13 +141,19 @@ test('get_estimate_pdf treats a zero-length body as a failure, not a 0-byte file
     headers: { 'content-type': 'application/octet-stream' },
   });
   const { ctx } = harness(empty);
-  const outcome = await tool('smartbill_get_estimate_pdf').run(ctx, { seriesname: 'pro', number: '227' });
+  const outcome = await tool('smartbill_get_estimate_pdf').run(ctx, {
+    seriesname: 'pro',
+    number: '227',
+  });
   assert.equal(outcome.ok, false);
 });
 
 test('a tool called with no cif anywhere fails without an HTTP call', async () => {
   const { ctx, calls } = harness(json({ errorText: '' }), { SMARTBILL_CIF: '' });
-  const outcome = await tool('smartbill_cancel_estimate').run(ctx, { seriesname: 'pro', number: '1' });
+  const outcome = await tool('smartbill_cancel_estimate').run(ctx, {
+    seriesname: 'pro',
+    number: '1',
+  });
   assert.equal(outcome.ok, false);
   assert.equal(calls.length, 0);
 });

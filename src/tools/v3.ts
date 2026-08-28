@@ -5,7 +5,7 @@ import { cifArg, withCif, type ToolDef } from './shared.ts';
 const PAGINATION_NOTE =
   'Cursor pagination: limit is 1-100 (default 20); `after` and `before` are ids and are mutually exclusive. ' +
   'pagination.next is a complete URL that already carries the filters — when it is null the listing is finished, even if the last page filled exactly to limit. ' +
-  'No tool can fetch that URL directly: to get the next page yourself, call this tool again passing the last item\'s `id` as `after`.';
+  "No tool can fetch that URL directly: to get the next page yourself, call this tool again passing the last item's `id` as `after`.";
 
 type Resource = {
   /** Path segment and English plural used in names and text. */

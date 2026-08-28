@@ -16,6 +16,9 @@ const DEFAULT_BASE_URL = 'https://ws.smartbill.ro/SBORO/api';
 /** Trim, and treat a blank string as absent. */
 const clean = (value: string | undefined): string | undefined => {
   const trimmed = value?.trim();
+  // `??` would keep an empty string; a blank env var must read as absent, which is this
+  // helper's whole job.
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   return trimmed ? trimmed : undefined;
 };
 

@@ -35,6 +35,8 @@ export const cifArg = z
   .describe('Company VAT code (CIF). Defaults to the SMARTBILL_CIF environment variable.');
 
 export function resolveCif(config: Config, cif?: string): string | SmartBillError {
+  // `??` would keep an empty `cif` argument instead of falling back to the environment.
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
   const resolved = cif?.trim() || config.cif;
   if (!resolved) {
     return {
@@ -53,7 +55,11 @@ export function resolveCif(config: Config, cif?: string): string | SmartBillErro
  * `ToolDef['run']`; it does not change that type.
  */
 export function withCif(
-  run: (ctx: ToolContext, args: Record<string, unknown>, cif: string) => Promise<ClientResult | ToolOutcome>,
+  run: (
+    ctx: ToolContext,
+    args: Record<string, unknown>,
+    cif: string,
+  ) => Promise<ClientResult | ToolOutcome>,
 ): ToolDef['run'] {
   return async (ctx, args) => {
     const cif = resolveCif(ctx.config, args.cif as string | undefined);
@@ -123,7 +129,9 @@ export async function savePdf(
 ): Promise<{ path: string; bytes: number }> {
   const safe = filename.replace(/[^A-Za-z0-9._-]/g, '_');
   if (safe === '.' || safe === '..') {
-    throw new Error(`savePdf: refusing to write unsafe filename "${filename}" (sanitises to "${safe}")`);
+    throw new Error(
+      `savePdf: refusing to write unsafe filename "${filename}" (sanitises to "${safe}")`,
+    );
   }
 
   const resolvedDir = resolve(dir);

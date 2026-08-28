@@ -5,7 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SmartBillClient } from '../src/client.ts';
 import { loadConfig } from '../src/config.ts';
-import { resolveCif, savePdf, toCallToolResult, withCif, withStatusHint } from '../src/tools/shared.ts';
+import {
+  resolveCif,
+  savePdf,
+  toCallToolResult,
+  withCif,
+  withStatusHint,
+} from '../src/tools/shared.ts';
 
 test('resolveCif prefers the argument over the environment', () => {
   const config = loadConfig({ SMARTBILL_CIF: 'ENV' });
@@ -40,7 +46,12 @@ test('withCif makes no HTTP call when no cif is available from either the argume
 test('toCallToolResult marks failures with isError and renders the param', () => {
   const r = toCallToolResult({
     ok: false,
-    error: { message: 'bad field', code: 'json_mapping_error', param: 'products[0].quantity', httpStatus: 400 },
+    error: {
+      message: 'bad field',
+      code: 'json_mapping_error',
+      param: 'products[0].quantity',
+      httpStatus: 400,
+    },
   });
   assert.equal(r.isError, true);
   assert.match(r.content[0]!.text, /products\[0\]\.quantity/);
@@ -101,7 +112,12 @@ test('withStatusHint replaces the hint only when the status matches, leaving oth
 });
 
 test('withStatusHint leaves a non-matching status or a success untouched', () => {
-  const wrongStatus = { ok: false as const, error: { message: 'boom', httpStatus: 400 }, status: 400, rateLimit: {} };
+  const wrongStatus = {
+    ok: false as const,
+    error: { message: 'boom', httpStatus: 400 },
+    status: 400,
+    rateLimit: {},
+  };
   assert.equal(withStatusHint(wrongStatus, 502, 'specific hint'), wrongStatus);
 
   const success = { ok: true as const, data: {}, status: 200, rateLimit: {} };

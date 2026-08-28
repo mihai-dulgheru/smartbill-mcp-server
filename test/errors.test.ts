@@ -67,7 +67,11 @@ test('a V3 body with two errors surfaces both', () => {
     instance: '/api/v3/clients',
     errors: [
       { code: 'missing_required_field', message: 'must not be blank', param: 'name' },
-      { code: 'invalid_field_format', message: 'must be a well-formed email address', param: 'email' },
+      {
+        code: 'invalid_field_format',
+        message: 'must be a well-formed email address',
+        param: 'email',
+      },
     ],
   });
   assert.ok(err);
@@ -102,7 +106,10 @@ test('stripHtml keeps text before the first tag and collapses whitespace', () =>
 test('stripHtml falls back to every tag stripped when the text begins with a tag', () => {
   // Truncating at the first '<' would return '' here, producing an error with a blank message
   // and no code or param.
-  assert.equal(stripHtml('<b>Eroare reala</b><br/>mai multe detalii'), 'Eroare reala mai multe detalii');
+  assert.equal(
+    stripHtml('<b>Eroare reala</b><br/>mai multe detalii'),
+    'Eroare reala mai multe detalii',
+  );
   assert.equal(stripHtml('<div>tot ascuns</div>'), 'tot ascuns');
 });
 
@@ -113,7 +120,11 @@ test('networkError reports httpStatus 0', () => {
 });
 
 test('a 502 gateway error with HTML body gets a gateway hint, not a field-name hint', () => {
-  const err = normalizeError(502, 'text/html;charset=utf-8', '<html><body>502 Bad Gateway</body></html>');
+  const err = normalizeError(
+    502,
+    'text/html;charset=utf-8',
+    '<html><body>502 Bad Gateway</body></html>',
+  );
   assert.ok(err);
   assert.equal(err.httpStatus, 502);
   assert.match(err.hint ?? '', /gateway|proxy/i);

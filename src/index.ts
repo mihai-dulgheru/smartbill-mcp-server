@@ -18,7 +18,10 @@ async function main(): Promise<void> {
   // server needs credentials". Safe once tools ARE registered: the SDK's handler setup is
   // idempotent (registerTool's internal setup call becomes a no-op) and its tools/list handler
   // reads the registry live, so tools added afterwards still show up.
-  const server = new McpServer({ name: 'smartbill', version: '1.0.0' }, { capabilities: { tools: {} } });
+  const server = new McpServer(
+    { name: 'smartbill', version: '1.0.0' },
+    { capabilities: { tools: {} } },
+  );
 
   let registered = 0;
   for (const tool of allTools) {

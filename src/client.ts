@@ -167,7 +167,11 @@ export class SmartBillClient {
     // carry that same escalated wait (or just reflect local clock skew), and this hold is not
     // subject to the ceiling request() applies to Retry-After — without the clamp here, the next
     // call on this API version would sleep inside #reserve() for however long the header said.
-    if (rateLimit.remaining !== undefined && rateLimit.remaining <= 0 && rateLimit.reset !== undefined) {
+    if (
+      rateLimit.remaining !== undefined &&
+      rateLimit.remaining <= 0 &&
+      rateLimit.reset !== undefined
+    ) {
       this.#windows[api].holdUntil(
         Math.min(rateLimit.reset * 1000, this.#clock.now() + MAX_RETRY_AFTER_SECONDS * 1000),
       );
@@ -184,7 +188,12 @@ export class SmartBillClient {
       try {
         body = await response.json();
       } catch (cause) {
-        return { ok: false, error: bodyReadError(status, 'JSON body could not be parsed', cause), status, rateLimit };
+        return {
+          ok: false,
+          error: bodyReadError(status, 'JSON body could not be parsed', cause),
+          status,
+          rateLimit,
+        };
       }
       const error = normalizeError(status, contentType, body, errorTextIsInformational);
       return error
@@ -197,17 +206,32 @@ export class SmartBillClient {
       try {
         text = await response.text();
       } catch (cause) {
-        return { ok: false, error: bodyReadError(status, 'HTML body could not be read', cause), status, rateLimit };
+        return {
+          ok: false,
+          error: bodyReadError(status, 'HTML body could not be read', cause),
+          status,
+          rateLimit,
+        };
       }
       const error = normalizeError(status, contentType, text);
-      return { ok: false, error: error ?? { message: text.slice(0, 200), httpStatus: status }, status, rateLimit };
+      return {
+        ok: false,
+        error: error ?? { message: text.slice(0, 200), httpStatus: status },
+        status,
+        rateLimit,
+      };
     }
 
     let bytes: Uint8Array;
     try {
       bytes = new Uint8Array(await response.arrayBuffer());
     } catch (cause) {
-      return { ok: false, error: bodyReadError(status, 'binary body could not be read', cause), status, rateLimit };
+      return {
+        ok: false,
+        error: bodyReadError(status, 'binary body could not be read', cause),
+        status,
+        rateLimit,
+      };
     }
     // No recognisable JSON/HTML envelope here (body is undefined): normalizeError falls back to
     // trusting the status code, which is the same shape the binary branch used to hand-build.
@@ -222,7 +246,8 @@ export class SmartBillClient {
     if (api === 'v1') {
       if (!this.#config.hasV1) {
         return {
-          message: 'API V1 credentials are not configured. Set SMARTBILL_EMAIL and SMARTBILL_TOKEN.',
+          message:
+            'API V1 credentials are not configured. Set SMARTBILL_EMAIL and SMARTBILL_TOKEN.',
           httpStatus: 0,
           hint: 'Both values are on https://cloud.smartbill.ro/core/integrari/ under API.',
         };

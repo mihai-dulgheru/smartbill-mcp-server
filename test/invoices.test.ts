@@ -51,7 +51,9 @@ test('create_invoice injects companyVatCode from the environment cif', async () 
     invoice: {
       seriesName: 'fac',
       client: { name: 'X SRL', country: 'Romania' },
-      products: [{ name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21 }],
+      products: [
+        { name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21 },
+      ],
     },
   });
   assert.equal(result.ok, true);
@@ -95,7 +97,10 @@ test('cancel_invoice against an already-cancelled invoice surfaces success, not 
   // Per the spec's own 200 example, the idempotent case carries an EMPTY errorText with the
   // informational text in `message` — errorText is never non-empty on this documented path.
   const { ctx } = harness(json({ errorText: '', message: 'Factura fac3744 este deja anulata.' }));
-  const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '3593' });
+  const outcome = await tool('smartbill_cancel_invoice').run(ctx, {
+    seriesname: 'fac',
+    number: '3593',
+  });
   assert.equal(outcome.ok, true);
   if (outcome.ok) assert.match(String((outcome.data as { message: string }).message), /anulata/);
 });
@@ -104,8 +109,13 @@ test('cancel_invoice on a 200 with a genuinely non-empty errorText is still a to
   // This is the regression guard for the removal of errorTextIsInformational: a real business
   // failure riding a 200 (e.g. a rights error) must not be reported as success just because
   // cancel/restore are idempotent in the ordinary case.
-  const { ctx } = harness(json({ errorText: 'Nu aveti dreptul de a adauga facturi pe seria selectata.' }));
-  const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '3593' });
+  const { ctx } = harness(
+    json({ errorText: 'Nu aveti dreptul de a adauga facturi pe seria selectata.' }),
+  );
+  const outcome = await tool('smartbill_cancel_invoice').run(ctx, {
+    seriesname: 'fac',
+    number: '3593',
+  });
   assert.equal(outcome.ok, false);
   const result = toCallToolResult(outcome);
   assert.equal(result.isError, true);
@@ -114,7 +124,10 @@ test('cancel_invoice on a 200 with a genuinely non-empty errorText is still a to
 
 test('only delete_invoice is marked destructive', () => {
   const destructive = invoiceTools.filter((t) => t.annotations?.destructiveHint === true);
-  assert.deepEqual(destructive.map((t) => t.name), ['smartbill_delete_invoice']);
+  assert.deepEqual(
+    destructive.map((t) => t.name),
+    ['smartbill_delete_invoice'],
+  );
 });
 
 test('get_invoice_pdf writes a file named with the cif, series and number', async () => {
@@ -144,7 +157,10 @@ test('get_invoice_pdf on a 502 HTML response gets the missing-parameter hint, no
     headers: { 'content-type': 'text/html' },
   });
   const { ctx } = harness(gateway);
-  const outcome = await tool('smartbill_get_invoice_pdf').run(ctx, { seriesname: 'fac', number: '3593' });
+  const outcome = await tool('smartbill_get_invoice_pdf').run(ctx, {
+    seriesname: 'fac',
+    number: '3593',
+  });
   assert.equal(outcome.ok, false);
   if (!outcome.ok) {
     assert.match(outcome.error.hint ?? '', /seriesname.*number|number.*seriesname/i);
@@ -154,7 +170,10 @@ test('get_invoice_pdf on a 502 HTML response gets the missing-parameter hint, no
 
 test('a tool called with no cif anywhere fails without an HTTP call', async () => {
   const { ctx, calls } = harness(json({ errorText: '' }), { SMARTBILL_CIF: '' });
-  const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '1' });
+  const outcome = await tool('smartbill_cancel_invoice').run(ctx, {
+    seriesname: 'fac',
+    number: '1',
+  });
   assert.equal(outcome.ok, false);
   assert.equal(calls.length, 0);
 });

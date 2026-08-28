@@ -35,7 +35,10 @@ export const paymentTools: ToolDef[] = [
       'This endpoint returns no JSON error for a bad id: a 500 with an HTML body means `id` is invalid or does not belong to an existing fiscal receipt.',
     inputSchema: z.object({
       cif: cifArg,
-      id: z.number().int().describe('Document id of the receipt, as returned by smartbill_create_payment.'),
+      id: z
+        .number()
+        .int()
+        .describe('Document id of the receipt, as returned by smartbill_create_payment.'),
     }),
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client }, args, cif) => {
@@ -81,7 +84,9 @@ export const paymentTools: ToolDef[] = [
       'Chitanta and Bon fiscal cannot be deleted here — use smartbill_delete_receipt for a Chitanta.',
     inputSchema: z.object({
       cif: cifArg,
-      paymentType: deletablePaymentTypeEnum.describe('The type recorded on the payment being deleted.'),
+      paymentType: deletablePaymentTypeEnum.describe(
+        'The type recorded on the payment being deleted.',
+      ),
       invoiceSeries: z.string().optional(),
       invoiceNumber: z.string().optional(),
       paymentDate: z.string().optional().describe('yyyy-MM-dd.'),

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.18 is the floor for running the TypeScript test suite directly via
+        # Node's native type stripping. 24 is the current LTS-track release.
+        node-version: ['22.18', '24']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      # format:check -> lint -> typecheck -> test
+      - run: npm run check
+
+      - run: npm run build
+
+      # The build must produce a working stdio server that registers all 29 tools.
+      - name: Verify the built server registers its tools
+        run: |
+          printf '%s\n%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"1"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+          | SMARTBILL_EMAIL=ci@example.test SMARTBILL_TOKEN=dummy \
+            SMARTBILL_V3_TOKEN=dummy SMARTBILL_CIF=RO0000000 \
+            node dist/index.js 2>/dev/null \
+          | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                const line = s.trim().split("\n").map(JSON.parse).find((m) => m.id === 2);
+                const n = line?.result?.tools?.length ?? 0;
+                console.log(`registered ${n} tools`);
+                if (n !== 29) { console.error("expected 29"); process.exit(1); }
+              });'

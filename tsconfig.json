@@ -5,8 +5,6 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2023"],
     "types": ["node"],
-    "outDir": "dist",
-    "rootDir": "src",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "erasableSyntaxOnly": true,
@@ -14,7 +12,8 @@
     "rewriteRelativeImportExtensions": true,
     "declaration": false,
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "noEmit": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "test/**/*.ts"]
 }

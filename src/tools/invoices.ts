@@ -87,11 +87,14 @@ export const invoiceTools: ToolDef[] = [
       // A defined-but-empty body is just as unusable as a missing one — treat it the same way
       // rather than silently saving a 0-byte "PDF".
       if (!res.bytes || res.bytes.length === 0) {
-        return { ok: false, error: { message: 'SmartBill returned no PDF content.', httpStatus: res.status } };
+        return {
+          ok: false,
+          error: { message: 'SmartBill returned no PDF content.', httpStatus: res.status },
+        };
       }
       const saved = await savePdf(
         config.downloadDir,
-        `${cif}-${args.seriesname}-${args.number}.pdf`,
+        `${cif}-${String(args.seriesname)}-${String(args.number)}.pdf`,
         res.bytes,
       );
       return { ok: true, data: saved };

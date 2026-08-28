@@ -31,7 +31,11 @@ test('an invoice with no products is rejected', () => {
 
 test('taxPercentage must be a number, not a percentage string', () => {
   const parsed = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 10, measuringUnitName: 'buc', taxPercentage: '21%',
+    name: 'P',
+    quantity: 1,
+    price: 10,
+    measuringUnitName: 'buc',
+    taxPercentage: '21%',
   });
   assert.equal(parsed.success, false);
 });
@@ -49,21 +53,36 @@ test('Chitanta is not a deletable payment type', () => {
 
 test('discountType of 3 is rejected (API accepts it but produces wrong document)', () => {
   const parsed = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
-    isDiscount: true, numberOfItems: 1, discountType: 3, discountValue: -10,
+    name: 'P',
+    quantity: 1,
+    price: 100,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
+    isDiscount: true,
+    numberOfItems: 1,
+    discountType: 3,
+    discountValue: -10,
   });
   assert.equal(parsed.success, false);
 });
 
 test('discountValue must be negative; positive is rejected', () => {
   const positiveRejected = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    name: 'P',
+    quantity: 1,
+    price: 100,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
     discountValue: 10,
   });
   assert.equal(positiveRejected.success, false);
 
   const negativeAccepted = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    name: 'P',
+    quantity: 1,
+    price: 100,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
     discountValue: -10,
   });
   assert.equal(negativeAccepted.success, true);
@@ -72,7 +91,11 @@ test('discountValue must be negative; positive is rejected', () => {
 test('discountPercentage is bounded: 101 and 0 are rejected; 10 is accepted', () => {
   assert.equal(
     productSchema.safeParse({
-      name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+      name: 'P',
+      quantity: 1,
+      price: 100,
+      measuringUnitName: 'buc',
+      taxPercentage: 21,
       discountPercentage: 101,
     }).success,
     false,
@@ -80,7 +103,11 @@ test('discountPercentage is bounded: 101 and 0 are rejected; 10 is accepted', ()
 
   assert.equal(
     productSchema.safeParse({
-      name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+      name: 'P',
+      quantity: 1,
+      price: 100,
+      measuringUnitName: 'buc',
+      taxPercentage: 21,
       discountPercentage: 0,
     }).success,
     false,
@@ -88,7 +115,11 @@ test('discountPercentage is bounded: 101 and 0 are rejected; 10 is accepted', ()
 
   assert.equal(
     productSchema.safeParse({
-      name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+      name: 'P',
+      quantity: 1,
+      price: 100,
+      measuringUnitName: 'buc',
+      taxPercentage: 21,
       discountPercentage: 10,
     }).success,
     true,
@@ -97,7 +128,11 @@ test('discountPercentage is bounded: 101 and 0 are rejected; 10 is accepted', ()
 
 test('price cannot be negative', () => {
   const parsed = productSchema.safeParse({
-    name: 'P', quantity: 1, price: -10, measuringUnitName: 'buc', taxPercentage: 21,
+    name: 'P',
+    quantity: 1,
+    price: -10,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
   });
   assert.equal(parsed.success, false);
 });
@@ -125,32 +160,47 @@ test('invoicesList accepts both single object and array', () => {
 
   const arrayOfObjects = paymentRequestSchema.safeParse({
     type: 'Ordin plata',
-    invoicesList: [{ seriesName: 'fac', number: '1' }, { seriesName: 'fac', number: '2' }],
+    invoicesList: [
+      { seriesName: 'fac', number: '1' },
+      { seriesName: 'fac', number: '2' },
+    ],
   });
   assert.equal(arrayOfObjects.success, true);
 });
 
 test('Client.email must be a valid email', () => {
   const invalidEmail = clientSchema.safeParse({
-    name: 'Test', country: 'Romania', email: 'not-an-email',
+    name: 'Test',
+    country: 'Romania',
+    email: 'not-an-email',
   });
   assert.equal(invalidEmail.success, false);
 
   const validEmail = clientSchema.safeParse({
-    name: 'Test', country: 'Romania', email: 'test@example.com',
+    name: 'Test',
+    country: 'Romania',
+    email: 'test@example.com',
   });
   assert.equal(validEmail.success, true);
 });
 
 test('discountValue: 0 is rejected; -10 is accepted (exclusive maximum 0)', () => {
   const zero = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    name: 'P',
+    quantity: 1,
+    price: 100,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
     discountValue: 0,
   });
   assert.equal(zero.success, false);
 
   const negative = productSchema.safeParse({
-    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    name: 'P',
+    quantity: 1,
+    price: 100,
+    measuringUnitName: 'buc',
+    taxPercentage: 21,
     discountValue: -10,
   });
   assert.equal(negative.success, true);
@@ -168,10 +218,14 @@ test('discountType semantics: 1 pairs with discountValue, 2 with discountPercent
 
   // Guard against the most dangerous regression: swapped discountType semantics.
   // Verify that both pairings are mentioned in the correct order.
-  const hasCorrectOrder = discountTypeDescribe.includes('1') &&
-                          discountTypeDescribe.indexOf('1') < discountTypeDescribe.indexOf('discountValue') &&
-                          discountTypeDescribe.includes('2') &&
-                          discountTypeDescribe.indexOf('2') < discountTypeDescribe.indexOf('discountPercentage');
+  const hasCorrectOrder =
+    discountTypeDescribe.includes('1') &&
+    discountTypeDescribe.indexOf('1') < discountTypeDescribe.indexOf('discountValue') &&
+    discountTypeDescribe.includes('2') &&
+    discountTypeDescribe.indexOf('2') < discountTypeDescribe.indexOf('discountPercentage');
 
-  assert.ok(hasCorrectOrder, 'discountType describe must state 1 before discountValue, and 2 before discountPercentage');
+  assert.ok(
+    hasCorrectOrder,
+    'discountType describe must state 1 before discountValue, and 2 before discountPercentage',
+  );
 });
