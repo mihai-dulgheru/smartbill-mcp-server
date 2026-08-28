@@ -1,0 +1,193 @@
+import type { Config } from './config.ts';
+import { networkError, normalizeError, type SmartBillError } from './errors.ts';
+import { realClock, SlidingWindow, type Clock } from './ratelimit.ts';
+
+export type ApiVersion = 'v1' | 'v3';
+export type QueryValue = string | number | boolean | undefined | null;
+
+export type RequestSpec = {
+  api: ApiVersion;
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  /** Path below the base URL, leading slash included. */
+  path: string;
+  query?: Record<string, QueryValue>;
+  body?: unknown;
+  /** True when a successful response is a binary document rather than JSON. */
+  binary?: boolean;
+};
+
+export type RateLimit = {
+  limit?: number;
+  remaining?: number;
+  reset?: number;
+  dailyLimit?: number;
+  dailyRemaining?: number;
+  dailyReset?: number;
+  retryAfter?: number;
+};
+
+export type ClientResult =
+  | { ok: true; data: unknown; bytes?: Uint8Array; status: number; rateLimit: RateLimit }
+  | { ok: false; error: SmartBillError; status: number; rateLimit: RateLimit };
+
+/**
+ * A Retry-After longer than this is reported rather than slept through: SmartBill's penalty
+ * intervals escalate to 600 seconds, and no MCP tool call should hang for ten minutes.
+ */
+const MAX_RETRY_AFTER_SECONDS = 60;
+
+const num = (raw: string | null): number | undefined => {
+  if (raw === null) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+function readRateLimit(headers: Headers): RateLimit {
+  return {
+    limit: num(headers.get('x-ratelimit-limit')),
+    remaining: num(headers.get('x-ratelimit-remaining')),
+    reset: num(headers.get('x-ratelimit-reset')),
+    dailyLimit: num(headers.get('x-ratelimit-daily-limit')),
+    dailyRemaining: num(headers.get('x-ratelimit-daily-remaining')),
+    dailyReset: num(headers.get('x-ratelimit-daily-reset')),
+    retryAfter: num(headers.get('retry-after')),
+  };
+}
+
+export class SmartBillClient {
+  #config: Config;
+  #fetch: typeof fetch;
+  #clock: Clock;
+  // V1: 30 requests / 10s, breach costs a 10-minute lockout.
+  // V3: 60 reads / 10s. Every V3 operation in the spec is a read, so no write window is needed.
+  #windows: Record<ApiVersion, SlidingWindow>;
+
+  constructor(config: Config, deps: { fetchImpl?: typeof fetch; clock?: Clock } = {}) {
+    this.#config = config;
+    this.#fetch = deps.fetchImpl ?? globalThis.fetch;
+    this.#clock = deps.clock ?? realClock;
+    this.#windows = {
+      v1: new SlidingWindow(30, 10_000, this.#clock),
+      v3: new SlidingWindow(60, 10_000, this.#clock),
+    };
+  }
+
+  async request(spec: RequestSpec): Promise<ClientResult> {
+    const authHeader = this.#authorization(spec.api);
+    if (typeof authHeader !== 'string') {
+      return { ok: false, error: authHeader, status: 0, rateLimit: {} };
+    }
+
+    const url = this.#url(spec);
+    const headers: Record<string, string> = {
+      authorization: authHeader,
+      accept: spec.binary ? 'application/octet-stream, application/json' : 'application/json',
+    };
+    const init: RequestInit = { method: spec.method, headers };
+    if (spec.body !== undefined) {
+      headers['content-type'] = 'application/json';
+      init.body = JSON.stringify(spec.body);
+    }
+
+    const first = await this.#send(spec.api, url, init);
+
+    // 429 and 503 are the only statuses the SmartBill docs say to retry, and only when
+    // Retry-After says how long to wait.
+    if (first.ok || (first.status !== 429 && first.status !== 503)) return first;
+
+    const wait = first.rateLimit.retryAfter;
+    if (wait === undefined) return first;
+
+    if (wait > MAX_RETRY_AFTER_SECONDS) {
+      return {
+        ...first,
+        error: {
+          ...first.error,
+          hint: `SmartBill asked for a ${wait}-second wait, which is longer than this server will hold a call open. Retry after ${wait} seconds; reduce the request rate to avoid the penalty escalating further.`,
+        },
+      };
+    }
+
+    await this.#clock.sleep(wait * 1000);
+    return this.#send(spec.api, url, init);
+  }
+
+  async #send(api: ApiVersion, url: string, init: RequestInit): Promise<ClientResult> {
+    await this.#windows[api].acquire();
+
+    let response: Response;
+    try {
+      response = await this.#fetch(url, init);
+    } catch (cause) {
+      return { ok: false, error: networkError(cause), status: 0, rateLimit: {} };
+    }
+
+    const rateLimit = readRateLimit(response.headers);
+    const contentType = response.headers.get('content-type') ?? '';
+    const status = response.status;
+
+    // Decode by what actually came back, not by what was expected: the PDF endpoints return
+    // JSON when they fail.
+    if (contentType.includes('application/json')) {
+      let body: unknown;
+      try {
+        body = await response.json();
+      } catch (cause) {
+        return { ok: false, error: networkError(cause), status, rateLimit };
+      }
+      const error = normalizeError(status, contentType, body);
+      return error
+        ? { ok: false, error, status, rateLimit }
+        : { ok: true, data: body, status, rateLimit };
+    }
+
+    if (contentType.includes('text/html')) {
+      const text = await response.text();
+      const error = normalizeError(status, contentType, text);
+      return { ok: false, error: error ?? { message: text.slice(0, 200), httpStatus: status }, status, rateLimit };
+    }
+
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (status >= 400) {
+      return {
+        ok: false,
+        error: { message: `Request failed with HTTP ${status}.`, httpStatus: status },
+        status,
+        rateLimit,
+      };
+    }
+    return { ok: true, data: undefined, bytes, status, rateLimit };
+  }
+
+  /** Returns the header value, or the error explaining which variables are missing. */
+  #authorization(api: ApiVersion): string | SmartBillError {
+    if (api === 'v1') {
+      if (!this.#config.hasV1) {
+        return {
+          message: 'API V1 credentials are not configured. Set SMARTBILL_EMAIL and SMARTBILL_TOKEN.',
+          httpStatus: 0,
+          hint: 'Both values are on https://cloud.smartbill.ro/core/integrari/ under API.',
+        };
+      }
+      const basic = Buffer.from(`${this.#config.email}:${this.#config.token}`).toString('base64');
+      return `Basic ${basic}`;
+    }
+    if (!this.#config.hasV3) {
+      return {
+        message: 'API V3 credentials are not configured. Set SMARTBILL_V3_TOKEN.',
+        httpStatus: 0,
+        hint: 'Generate a V3 bearer token on https://cloud.smartbill.ro/core/integrari/.',
+      };
+    }
+    return `Bearer ${this.#config.v3Token}`;
+  }
+
+  #url(spec: RequestSpec): string {
+    const url = new URL(this.#config.baseUrl + spec.path);
+    for (const [key, value] of Object.entries(spec.query ?? {})) {
+      if (value === undefined || value === null) continue;
+      url.searchParams.set(key, String(value));
+    }
+    return url.toString();
+  }
+}
