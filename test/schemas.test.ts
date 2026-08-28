@@ -1,12 +1,12 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
-  invoiceRequestSchema,
-  productSchema,
-  paginationSchema,
-  deletablePaymentTypeEnum,
-  paymentRequestSchema,
   clientSchema,
+  deletablePaymentTypeEnum,
+  invoiceRequestSchema,
+  paginationSchema,
+  paymentRequestSchema,
+  productSchema,
 } from '../src/schemas.ts';
 
 test('a minimal invoice passes validation', () => {

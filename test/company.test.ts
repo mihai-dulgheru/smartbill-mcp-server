@@ -1,5 +1,5 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { SmartBillClient } from '../src/client.ts';
 import { loadConfig } from '../src/config.ts';
 import type { Clock } from '../src/ratelimit.ts';

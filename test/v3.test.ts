@@ -1,10 +1,10 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
+import test from 'node:test';
 import { SmartBillClient } from '../src/client.ts';
 import { loadConfig } from '../src/config.ts';
 import type { Clock } from '../src/ratelimit.ts';
-import { v3Tools } from '../src/tools/v3.ts';
 import { toCallToolResult, type ToolContext } from '../src/tools/shared.ts';
+import { v3Tools } from '../src/tools/v3.ts';
 
 const noWaitClock: Clock = { now: () => Date.now(), sleep: async () => {} };
 

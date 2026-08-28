@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeError, stripHtml, networkError } from '../src/errors.ts';
+import test from 'node:test';
+import { networkError, normalizeError, stripHtml } from '../src/errors.ts';
 
 const JSON_CT = 'application/json';
 

@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import test from 'node:test';
 import { allTools } from '../src/tools/index.ts';
 
 type SpecOperation = { operationId?: string; security?: Array<Record<string, unknown>> };

@@ -1,6 +1,6 @@
-import test from 'node:test';
 import assert from 'node:assert/strict';
 import { tmpdir } from 'node:os';
+import test from 'node:test';
 import { loadConfig } from '../src/config.ts';
 
 test('defaults baseUrl and downloadDir when unset', () => {
