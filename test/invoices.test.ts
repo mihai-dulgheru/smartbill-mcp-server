@@ -91,6 +91,13 @@ test('cancel and delete build the right method and query', async () => {
   assert.equal(new URL(calls[1]!.url).pathname, '/SBORO/api/invoice');
 });
 
+test('cancel_invoice against an already-cancelled invoice surfaces success, not a tool error', async () => {
+  const { ctx } = harness(json({ errorText: 'Factura este deja anulata.' }));
+  const outcome = await tool('smartbill_cancel_invoice').run(ctx, { seriesname: 'fac', number: '3593' });
+  assert.equal(outcome.ok, true);
+  if (outcome.ok) assert.match(String((outcome.data as { errorText: string }).errorText), /anulata/);
+});
+
 test('only delete_invoice is marked destructive', () => {
   const destructive = invoiceTools.filter((t) => t.annotations?.destructiveHint === true);
   assert.deepEqual(destructive.map((t) => t.name), ['smartbill_delete_invoice']);

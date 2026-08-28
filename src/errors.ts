@@ -36,11 +36,17 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  *
  * The critical rule: on API V1 an HTTP 200 is NOT proof of success. `errorText` is the source of
  * truth — empty means the operation succeeded, non-empty carries the reason it did not.
+ *
+ * `errorTextIsInformational` is the sole, explicit exception to that rule: a handful of
+ * endpoints document a 200-with-non-empty-`errorText` response as itself a success (an
+ * idempotent no-op, or a purely informational note). It only ever changes the 200 case — a
+ * non-200 response still fails on a non-empty `errorText` regardless of this flag.
  */
 export function normalizeError(
   httpStatus: number,
   contentType: string,
   body: unknown,
+  errorTextIsInformational = false,
 ): SmartBillError | null {
   // An HTML body means the request never reached the JSON layer. Per the SmartBill docs a 500
   // with an HTML body is almost always a misspelled field name, not a real server fault.
@@ -63,9 +69,11 @@ export function normalizeError(
 
   if (isRecord(body)) {
     // Shape 1: the classic V1 business failure. Checked before the status code, because it is
-    // the only failure that can arrive with HTTP 200.
+    // the only failure that can arrive with HTTP 200 — except the endpoints that opt into
+    // `errorTextIsInformational`, where a 200 is a success no matter what `errorText` says.
     const errorText = body.errorText;
-    if (typeof errorText === 'string' && errorText.trim() !== '') {
+    const treatErrorTextAsFailure = !(errorTextIsInformational && httpStatus === 200);
+    if (treatErrorTextAsFailure && typeof errorText === 'string' && errorText.trim() !== '') {
       return { message: stripHtml(errorText), httpStatus };
     }
 

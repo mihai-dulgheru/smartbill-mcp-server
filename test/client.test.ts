@@ -87,6 +87,39 @@ test('a 200 carrying errorText is returned as a failure', async () => {
   if (!res.ok) assert.match(res.error.message, /Seria nu a fost gasita/);
 });
 
+test('...unless the request opts in with errorTextIsInformational, which turns a 200 into a success and keeps the message', async () => {
+  const { impl } = stubFetch(json({ errorText: 'Proforma cu seria pro si numarul 226 nu a fost facturata.', areInvoicesCreated: false }));
+  const res = await client(impl).request({
+    api: 'v1',
+    method: 'GET',
+    path: '/estimate/invoices',
+    query: { cif: 'RO1' },
+    errorTextIsInformational: true,
+  });
+  assert.equal(res.ok, true);
+  assert.equal(res.status, 200);
+  if (res.ok) {
+    const data = res.data as { errorText: string; areInvoicesCreated: boolean };
+    assert.match(data.errorText, /nu a fost facturata/);
+    assert.equal(data.areInvoicesCreated, false);
+  }
+});
+
+test('errorTextIsInformational never relaxes a non-200 response — only HTTP 200 is exempt', async () => {
+  const { impl } = stubFetch(
+    json({ errorText: 'Nu poti sterge documentul cu seria si numarul CH 0003, deoarece nu este ultimul din serie!' }, 403),
+  );
+  const res = await client(impl).request({
+    api: 'v1',
+    method: 'PUT',
+    path: '/estimate/cancel',
+    query: { cif: 'RO1' },
+    errorTextIsInformational: true,
+  });
+  assert.equal(res.ok, false);
+  if (!res.ok) assert.equal(res.error.httpStatus, 403);
+});
+
 test('a mixed-case Content-Type is still decoded as JSON', async () => {
   const { impl } = stubFetch(
     new Response(JSON.stringify({ errorText: '' }), { status: 200, headers: { 'content-type': 'Application/JSON' } }),

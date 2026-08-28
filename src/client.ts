@@ -14,6 +14,13 @@ export type RequestSpec = {
   body?: unknown;
   /** True when a successful response is a binary document rather than JSON. */
   binary?: boolean;
+  /**
+   * True when SmartBill's own spec documents this operation returning HTTP 200 with a
+   * non-empty `errorText` as a success (an idempotent no-op, or a purely informational note).
+   * Only ever relaxes the 200 case — a non-200 response still fails on a non-empty `errorText`
+   * exactly as it does everywhere else. Default false: a 200 with `errorText` is a failure.
+   */
+  errorTextIsInformational?: boolean;
 };
 
 export type RateLimit = {
@@ -103,7 +110,8 @@ export class SmartBillClient {
       init.body = JSON.stringify(spec.body);
     }
 
-    const first = await this.#send(spec.api, url, init);
+    const errorTextIsInformational = spec.errorTextIsInformational ?? false;
+    const first = await this.#send(spec.api, url, init, errorTextIsInformational);
 
     // 429 and 503 are the only statuses the SmartBill docs say to retry, and only when
     // Retry-After says how long to wait.
@@ -123,10 +131,15 @@ export class SmartBillClient {
     }
 
     await this.#clock.sleep(wait * 1000);
-    return this.#send(spec.api, url, init);
+    return this.#send(spec.api, url, init, errorTextIsInformational);
   }
 
-  async #send(api: ApiVersion, url: string, init: RequestInit): Promise<ClientResult> {
+  async #send(
+    api: ApiVersion,
+    url: string,
+    init: RequestInit,
+    errorTextIsInformational: boolean,
+  ): Promise<ClientResult> {
     await this.#windows[api].acquire();
 
     let response: Response;
@@ -151,7 +164,7 @@ export class SmartBillClient {
       } catch (cause) {
         return { ok: false, error: bodyReadError(status, 'JSON body could not be parsed', cause), status, rateLimit };
       }
-      const error = normalizeError(status, contentType, body);
+      const error = normalizeError(status, contentType, body, errorTextIsInformational);
       return error
         ? { ok: false, error, status, rateLimit }
         : { ok: true, data: body, status, rateLimit };

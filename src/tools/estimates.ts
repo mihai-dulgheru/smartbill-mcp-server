@@ -4,7 +4,12 @@ import { cifArg, savePdf, withCif, type ToolDef } from './shared.ts';
 
 const docRef = { cif: cifArg, ...documentRefSchema.shape };
 
-/** Every estimate tool but create and pdf is the same shape: cif + series + number on one path. */
+/**
+ * Every estimate tool but create and pdf is the same shape: cif + series + number on one path.
+ * `errorTextIsInformational` is opt-in per call site — only the three operations the spec
+ * documents as idempotent/informational-on-200 (getEstimateInvoices, cancelEstimate,
+ * restoreEstimate) pass it; deleteEstimate does not, so a real failure there still surfaces.
+ */
 const simple = (
   name: string,
   operationId: string,
@@ -13,6 +18,7 @@ const simple = (
   method: 'GET' | 'PUT' | 'DELETE',
   path: string,
   annotations?: ToolDef['annotations'],
+  errorTextIsInformational?: boolean,
 ): ToolDef => ({
   name,
   operationId,
@@ -27,6 +33,7 @@ const simple = (
       method,
       path,
       query: { cif, seriesname: args.seriesname as string, number: args.number as string },
+      ...(errorTextIsInformational ? { errorTextIsInformational: true } : {}),
     });
   }),
 });
@@ -88,28 +95,35 @@ export const estimateTools: ToolDef[] = [
     'smartbill_get_estimate_invoices',
     'getEstimateInvoices',
     'List invoices issued from a proforma',
-    'List the invoices that were created from a given proforma. Use it to check whether a proforma has already been invoiced before issuing another.',
+    'List the invoices that were created from a given proforma. Use it to check whether a proforma has already been invoiced before issuing another. ' +
+      'If the proforma has not been invoiced yet, the call still succeeds and the response can carry a purely informational `errorText` (e.g. "...nu a fost facturata.") — that is not a failure. ' +
+      'A draft invoice appears in the `invoices` list with an empty `number` and still sets `areInvoicesCreated: true`; ignore entries with an empty `number` when checking whether a real invoice has been issued, or an unfinished draft can be mistaken for a completed one.',
     'GET',
     '/estimate/invoices',
     { readOnlyHint: true },
+    true,
   ),
   simple(
     'smartbill_cancel_estimate',
     'cancelEstimate',
     'Cancel proforma',
-    'Mark a proforma as cancelled. Reversible with smartbill_restore_estimate.',
+    'Mark a proforma as cancelled. Reversible with smartbill_restore_estimate. ' +
+      'Idempotent: cancelling an already-cancelled proforma still succeeds, carrying an informational message rather than failing as a tool error.',
     'PUT',
     '/estimate/cancel',
     { destructiveHint: false, idempotentHint: true },
+    true,
   ),
   simple(
     'smartbill_restore_estimate',
     'restoreEstimate',
     'Restore cancelled proforma',
-    'Undo smartbill_cancel_estimate, returning the proforma to its active state.',
+    'Undo smartbill_cancel_estimate, returning the proforma to its active state. ' +
+      'Idempotent: restoring a proforma that was never cancelled still succeeds, carrying an informational message rather than failing as a tool error.',
     'PUT',
     '/estimate/restore',
     { destructiveHint: false, idempotentHint: true },
+    true,
   ),
   simple(
     'smartbill_delete_estimate',

@@ -114,7 +114,8 @@ export const invoiceTools: ToolDef[] = [
     api: 'v1',
     title: 'Cancel invoice',
     description:
-      'Mark an invoice as cancelled. Reversible with smartbill_restore_invoice — this does not delete the document.',
+      'Mark an invoice as cancelled. Reversible with smartbill_restore_invoice — this does not delete the document. ' +
+      'Idempotent: cancelling an invoice that is already cancelled still succeeds, carrying an informational message rather than failing as a tool error.',
     inputSchema: z.object(docRef),
     annotations: { destructiveHint: false, idempotentHint: true },
     run: withCif(async ({ client }, args, cif) => {
@@ -123,6 +124,7 @@ export const invoiceTools: ToolDef[] = [
         method: 'PUT',
         path: '/invoice/cancel',
         query: { cif, seriesname: args.seriesname as string, number: args.number as string },
+        errorTextIsInformational: true,
       });
     }),
   },
@@ -131,7 +133,9 @@ export const invoiceTools: ToolDef[] = [
     operationId: 'restoreInvoice',
     api: 'v1',
     title: 'Restore cancelled invoice',
-    description: 'Undo smartbill_cancel_invoice, returning the invoice to its active state.',
+    description:
+      'Undo smartbill_cancel_invoice, returning the invoice to its active state. ' +
+      'Idempotent: restoring an invoice that was never cancelled still succeeds, carrying an informational message rather than failing as a tool error.',
     inputSchema: z.object(docRef),
     annotations: { destructiveHint: false, idempotentHint: true },
     run: withCif(async ({ client }, args, cif) => {
@@ -140,6 +144,7 @@ export const invoiceTools: ToolDef[] = [
         method: 'PUT',
         path: '/invoice/restore',
         query: { cif, seriesname: args.seriesname as string, number: args.number as string },
+        errorTextIsInformational: true,
       });
     }),
   },
