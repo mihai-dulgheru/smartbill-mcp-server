@@ -141,3 +141,17 @@ test('Client.email must be a valid email', () => {
   });
   assert.equal(validEmail.success, true);
 });
+
+test('discountValue: 0 is rejected; -10 is accepted (exclusive maximum 0)', () => {
+  const zero = productSchema.safeParse({
+    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    discountValue: 0,
+  });
+  assert.equal(zero.success, false);
+
+  const negative = productSchema.safeParse({
+    name: 'P', quantity: 1, price: 100, measuringUnitName: 'buc', taxPercentage: 21,
+    discountValue: -10,
+  });
+  assert.equal(negative.success, true);
+});
