@@ -14,7 +14,7 @@ async function main(): Promise<void> {
   // Declares the tools capability up front so tools/list is wired even when zero tools end up
   // registered below (no credentials at all): the SDK only sets up that handler on either this
   // constructor option or the first registerTool() call, and with neither, a client's tools/list
-  // gets back "-32601 Method not found" — reading as "this server is broken" rather than "this
+  // gets back "-32601 Method not found" - reading as "this server is broken" rather than "this
   // server needs credentials". Safe once tools ARE registered: the SDK's handler setup is
   // idempotent (registerTool's internal setup call becomes a no-op) and its tools/list handler
   // reads the registry live, so tools added afterwards still show up.
@@ -43,7 +43,7 @@ async function main(): Promise<void> {
     registered += 1;
   }
 
-  // stdout is the MCP wire — every diagnostic goes to stderr.
+  // stdout is the MCP wire - every diagnostic goes to stderr.
   if (registered === 0) {
     console.error(
       'smartbill-mcp-server: no tools registered. Set SMARTBILL_EMAIL and SMARTBILL_TOKEN for API V1, and/or SMARTBILL_V3_TOKEN for API V3.',

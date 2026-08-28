@@ -61,7 +61,7 @@ export const paymentTools: ToolDef[] = [
     title: 'Delete receipt (chitanta)',
     description:
       'Permanently delete a receipt by its series and number. IRREVERSIBLE. Only the most recent receipt in a series can normally be deleted. ' +
-      'This is the only way to remove a Chitanta — smartbill_delete_payment does not accept that type.',
+      'This is the only way to remove a Chitanta - smartbill_delete_payment does not accept that type.',
     inputSchema: z.object({ cif: cifArg, ...documentRefSchema.shape }),
     annotations: { destructiveHint: true },
     run: withCif(async ({ client }, args, cif) => {
@@ -81,7 +81,7 @@ export const paymentTools: ToolDef[] = [
     description:
       'Permanently delete a payment. IRREVERSIBLE. Identify it either by invoice (invoiceSeries + invoiceNumber) or by payment details (paymentDate, paymentValue, clientName, clientCif). ' +
       'paymentType must match the type actually recorded on the payment; a mismatch returns "Nu au fost gasite incasari conform datelor specificate." ' +
-      'Chitanta and Bon fiscal cannot be deleted here — use smartbill_delete_receipt for a Chitanta.',
+      'Chitanta and Bon fiscal cannot be deleted here - use smartbill_delete_receipt for a Chitanta.',
     inputSchema: z.object({
       cif: cifArg,
       paymentType: deletablePaymentTypeEnum.describe(

@@ -95,7 +95,7 @@ test('cancel and delete build the right method and query', async () => {
 
 test('cancel_invoice against an already-cancelled invoice surfaces success, not a tool error', async () => {
   // Per the spec's own 200 example, the idempotent case carries an EMPTY errorText with the
-  // informational text in `message` — errorText is never non-empty on this documented path.
+  // informational text in `message` - errorText is never non-empty on this documented path.
   const { ctx } = harness(json({ errorText: '', message: 'Factura fac3744 este deja anulata.' }));
   const outcome = await tool('smartbill_cancel_invoice').run(ctx, {
     seriesname: 'fac',

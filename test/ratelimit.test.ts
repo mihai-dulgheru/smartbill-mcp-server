@@ -3,7 +3,7 @@ import test from 'node:test';
 import { SlidingWindow, type Clock } from '../src/ratelimit.ts';
 
 /**
- * A clock whose time only moves when a sleep is awaited, and — critically — only mutates `time`
+ * A clock whose time only moves when a sleep is awaited, and - critically - only mutates `time`
  * and `slept` after yielding a microtask, not synchronously inside the call.
  *
  * A synchronous mutation here would hide a real bug: without the `#queue` serialisation in

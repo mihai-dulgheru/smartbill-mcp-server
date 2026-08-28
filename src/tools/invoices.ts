@@ -5,7 +5,7 @@ import { cifArg, savePdf, withCif, withStatusHint, type ToolDef } from './shared
 const docRef = { cif: cifArg, ...documentRefSchema.shape };
 
 const ACCOUNT_STRINGS =
-  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly — never guess them. seriesName comes from smartbill_get_series, taxName from smartbill_get_tax_and_series, and measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
+  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly - never guess them. seriesName comes from smartbill_get_series, taxName from smartbill_get_tax_and_series, and measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
 
 export const invoiceTools: ToolDef[] = [
   {
@@ -17,7 +17,7 @@ export const invoiceTools: ToolDef[] = [
       'Issue a new invoice in SmartBill Cloud. ' +
       ACCOUNT_STRINGS +
       ' Product prices EXCLUDE VAT unless isTaxIncluded is true. taxPercentage is a bare number (21), never a string ("21%"). ' +
-      'On success the response carries `number`, `series`, `documentId` and `documentViewUrl` — the last is a public PDF link safe to send to the client.',
+      'On success the response carries `number`, `series`, `documentId` and `documentViewUrl` - the last is a public PDF link safe to send to the client.',
     inputSchema: z.object({ cif: cifArg, invoice: invoiceRequestSchema }),
     annotations: { destructiveHint: false, idempotentHint: false },
     run: withCif(async ({ client }, args, cif) => {
@@ -67,8 +67,8 @@ export const invoiceTools: ToolDef[] = [
     api: 'v1',
     title: 'Download invoice PDF',
     description:
-      'Download an invoice as PDF. The file is written to the server download directory and the tool returns its path and size — the PDF bytes are never inlined. ' +
-      'This endpoint returns no JSON error: any missing parameter or nonexistent invoice comes back as a 502 with an HTML body — a 502 here means check `seriesname`, `number` and that the invoice exists, not a proxy fluke worth retrying.',
+      'Download an invoice as PDF. The file is written to the server download directory and the tool returns its path and size - the PDF bytes are never inlined. ' +
+      'This endpoint returns no JSON error: any missing parameter or nonexistent invoice comes back as a 502 with an HTML body - a 502 here means check `seriesname`, `number` and that the invoice exists, not a proxy fluke worth retrying.',
     inputSchema: z.object(docRef),
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client, config }, args, cif) => {
@@ -84,7 +84,7 @@ export const invoiceTools: ToolDef[] = [
         'This endpoint returns no JSON error: a 502 means `seriesname` or `number` is missing, or the invoice does not exist. Verify those rather than retrying.',
       );
       if (!res.ok) return res;
-      // A defined-but-empty body is just as unusable as a missing one — treat it the same way
+      // A defined-but-empty body is just as unusable as a missing one - treat it the same way
       // rather than silently saving a 0-byte "PDF".
       if (!res.bytes || res.bytes.length === 0) {
         return {
@@ -124,7 +124,7 @@ export const invoiceTools: ToolDef[] = [
     api: 'v1',
     title: 'Cancel invoice',
     description:
-      'Mark an invoice as cancelled. Reversible with smartbill_restore_invoice — this does not delete the document. ' +
+      'Mark an invoice as cancelled. Reversible with smartbill_restore_invoice - this does not delete the document. ' +
       'Idempotent: cancelling an invoice that is already cancelled still succeeds, carrying an informational message rather than failing as a tool error.',
     inputSchema: z.object(docRef),
     annotations: { destructiveHint: false, idempotentHint: true },

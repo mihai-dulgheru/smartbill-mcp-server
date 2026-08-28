@@ -5,7 +5,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# Secrets — never commit real credentials
+# Secrets - never commit real credentials
 .env
 .env.local
 .env.*.local

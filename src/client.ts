@@ -17,7 +17,7 @@ export type RequestSpec = {
   /**
    * True when SmartBill's own spec documents this operation returning HTTP 200 with a
    * non-empty `errorText` as a success (an idempotent no-op, or a purely informational note).
-   * Only ever relaxes the 200 case — a non-200 response still fails on a non-empty `errorText`
+   * Only ever relaxes the 200 case - a non-200 response still fails on a non-empty `errorText`
    * exactly as it does everywhere else. Default false: a 200 with `errorText` is a failure.
    */
   errorTextIsInformational?: boolean;
@@ -44,7 +44,7 @@ export type ClientResult =
 const MAX_RETRY_AFTER_SECONDS = 60;
 
 const num = (raw: string | null): number | undefined => {
-  // Number('') is 0, not NaN — without this check a blank header (e.g. an empty Retry-After)
+  // Number('') is 0, not NaN - without this check a blank header (e.g. an empty Retry-After)
   // would be read as "wait zero seconds" and retried immediately, the one thing the docs warn
   // against, instead of being treated as absent like a missing header.
   if (raw === null || raw === '') return undefined;
@@ -106,7 +106,7 @@ export class SmartBillClient {
     const headers: Record<string, string> = {
       authorization: authHeader,
       // The PDF endpoints echo whatever Accept they were sent back as the response Content-Type,
-      // even though the body is always the same PDF bytes — so Content-Type can't be trusted to
+      // even though the body is always the same PDF bytes - so Content-Type can't be trusted to
       // pick a decoder, and a two-value list is untested against a server documented to mirror a
       // single value. `*/*` is one of the few values the spec explicitly blesses (alongside
       // `application/octet-stream`, `application/json`, and no header at all) and, being a
@@ -160,12 +160,12 @@ export class SmartBillClient {
     }
 
     const rateLimit = readRateLimit(response.headers);
-    // The server's own count is the only signal that sees every process sharing this token — our
+    // The server's own count is the only signal that sees every process sharing this token - our
     // local sliding window only sees this process. When it says the window is exhausted, hold
     // further requests until its reset time rather than trusting our own count alone.
     // Clamped to MAX_RETRY_AFTER_SECONDS: V3's penalty ladder escalates to 600s and `reset` can
     // carry that same escalated wait (or just reflect local clock skew), and this hold is not
-    // subject to the ceiling request() applies to Retry-After — without the clamp here, the next
+    // subject to the ceiling request() applies to Retry-After - without the clamp here, the next
     // call on this API version would sleep inside #reserve() for however long the header said.
     if (
       rateLimit.remaining !== undefined &&

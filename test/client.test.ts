@@ -93,7 +93,7 @@ test('sends Content-Type only when there is a body', async () => {
 
 test('sends Accept: */* for a binary request, never a multi-value list', async () => {
   // The spec documents the response Content-Type as MIRRORING whatever Accept was sent, so a
-  // comma-separated list is untested against a server that echoes a single value back — and if it
+  // comma-separated list is untested against a server that echoes a single value back - and if it
   // resolved to application/json, a PDF response would wrongly hit the JSON decoder.
   const { impl, calls } = stubFetch(
     new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
@@ -153,7 +153,7 @@ test('...unless the request opts in with errorTextIsInformational, which turns a
   }
 });
 
-test('errorTextIsInformational never relaxes a non-200 response — only HTTP 200 is exempt', async () => {
+test('errorTextIsInformational never relaxes a non-200 response - only HTTP 200 is exempt', async () => {
   const { impl } = stubFetch(
     json(
       {
@@ -239,7 +239,7 @@ test('a response reporting remaining <= 0 holds the window until X-RateLimit-Res
   // Our own sliding window only sees this process; X-RateLimit-Remaining sees every process
   // sharing the token, so a reported 0 must hold the window even though the local count alone
   // would have allowed the next call straight through. 10s is the ordinary, common case (ordinary
-  // window reset) — well under MAX_RETRY_AFTER_SECONDS, so the clamp must not shorten it.
+  // window reset) - well under MAX_RETRY_AFTER_SECONDS, so the clamp must not shorten it.
   let time = 1_700_000_000_000;
   const slept: number[] = [];
   const clock: Clock = {
@@ -270,7 +270,7 @@ test('a reset far in the future (V3 penalty-ladder territory) is clamped to MAX_
   // Traced regression: a 429 can carry remaining:0 with a reset up to 600s out (the V3 penalty
   // ladder is 5,10,20,40,80,160,300,600s, and the spec says X-RateLimit-Reset can carry that same
   // "current wait interval"). request()'s own MAX_RETRY_AFTER_SECONDS ceiling only guards the
-  // retry it performs itself — without clamping the hold too, the *next* tool call would sleep
+  // retry it performs itself - without clamping the hold too, the *next* tool call would sleep
   // inside #reserve() for the full, unclamped duration.
   let time = 1_700_000_000_000;
   const slept: number[] = [];
@@ -296,11 +296,11 @@ test('a reset far in the future (V3 penalty-ladder territory) is clamped to MAX_
   );
   const c = new SmartBillClient(config, { fetchImpl: impl, clock });
   // First call: 429 with no Retry-After header, so request() returns the error as-is (no sleep of
-  // its own) — but #send still records the hold from remaining/reset.
+  // its own) - but #send still records the hold from remaining/reset.
   const first = await c.request({ api: 'v3', method: 'GET', path: '/v3/companies/RO1/clients' });
   assert.equal(first.ok, false);
   slept.length = 0;
-  // Second call: whatever the hold sleeps, it must not exceed the 60s ceiling — 600s would mean
+  // Second call: whatever the hold sleeps, it must not exceed the 60s ceiling - 600s would mean
   // this call (and everything serialised behind it) hangs for ten minutes.
   await c.request({ api: 'v3', method: 'GET', path: '/v3/companies/RO1/clients' });
   assert.ok(slept.length > 0, 'expected the second call to wait out the hold');
@@ -457,7 +457,7 @@ test('a Retry-After above the ceiling errors instead of sleeping', async () => {
 });
 
 test('a blank Retry-After is treated as absent, not as an immediate retry', async () => {
-  // Number('') is 0, so without the fix this would sleep(0) and retry immediately — the one thing
+  // Number('') is 0, so without the fix this would sleep(0) and retry immediately - the one thing
   // the docs say not to do on a rate-limit response.
   const { impl, calls } = stubFetch(
     json(

@@ -207,7 +207,7 @@ test('discountValue: 0 is rejected; -10 is accepted (exclusive maximum 0)', () =
 });
 
 test('discountType semantics: 1 pairs with discountValue, 2 with discountPercentage (regression guard)', () => {
-  // Read the discountType describe from the schema — critical because this text is what AI models read
+  // Read the discountType describe from the schema - critical because this text is what AI models read
   let discountTypeDescribe = productSchema.shape.discountType.description;
   // If wrapped in .optional(), description may be on the unwrapped schema
   if (!discountTypeDescribe && productSchema.shape.discountType.unwrap) {

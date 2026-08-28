@@ -66,7 +66,7 @@ export const invoicePaymentTypeEnum = z.enum([
   'Alta incasare',
 ]);
 
-/** Accepted by DELETE /payment/v2 — excludes Chitanta and Bon fiscal by design. */
+/** Accepted by DELETE /payment/v2 - excludes Chitanta and Bon fiscal by design. */
 export const deletablePaymentTypeEnum = z.enum([
   'Card',
   'Card online',
@@ -104,12 +104,12 @@ export const productSchema = z.object({
     .number()
     .min(0)
     .describe(
-      'Unit price. EXCLUDES VAT unless isTaxIncluded is true — this is the most common source of wrong totals.',
+      'Unit price. EXCLUDES VAT unless isTaxIncluded is true - this is the most common source of wrong totals.',
     ),
   measuringUnitName: z
     .string()
     .describe(
-      'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly — GET /tax does not return units, so read it from smartbill_get_stocks (list[].products[].measuringUnit) or smartbill_v3_list_products/smartbill_v3_get_product (measuringUnitName), or ask the user.',
+      'Unit of measure, e.g. "buc". Must match a unit configured in the SmartBill account exactly - GET /tax does not return units, so read it from smartbill_get_stocks (list[].products[].measuringUnit) or smartbill_v3_list_products/smartbill_v3_get_product (measuringUnitName), or ask the user.',
     ),
   taxPercentage: z.number().describe('VAT percentage as a bare number, e.g. 21. Never "21%".'),
   code: z
@@ -127,7 +127,7 @@ export const productSchema = z.object({
     .string()
     .optional()
     .describe(
-      'VAT rate name, e.g. "Normala". Must match a rate configured in the account — read it from smartbill_get_tax_and_series.',
+      'VAT rate name, e.g. "Normala". Must match a rate configured in the account - read it from smartbill_get_tax_and_series.',
     ),
   warehouseName: z.string().optional().describe('Warehouse name. Case-sensitive.'),
   isDiscount: z.boolean().optional(),
@@ -184,7 +184,7 @@ const documentBase = {
   seriesName: z
     .string()
     .describe(
-      'Document series name. Must match a series configured in the SmartBill account — read it from smartbill_get_series. Do not invent one.',
+      'Document series name. Must match a series configured in the SmartBill account - read it from smartbill_get_series. Do not invent one.',
     ),
   client: clientSchema,
   products: z.array(productSchema).min(1),

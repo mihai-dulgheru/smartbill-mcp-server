@@ -25,7 +25,7 @@ export function stripHtml(text: string): string {
   const head = cut === -1 ? text : text.slice(0, cut);
   const leading = head.replace(/\s+/g, ' ').trim();
   if (leading !== '') return leading;
-  // The leading sentence was empty — the text starts with a tag (e.g. an error wrapped entirely
+  // The leading sentence was empty - the text starts with a tag (e.g. an error wrapped entirely
   // in <b>). Falling through to '' would surface a blank message with no code or param, so strip
   // every tag in the string instead of just truncating at the first one.
   return text
@@ -43,11 +43,11 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Collapses every SmartBill failure shape into one error, or returns null for a success.
  *
  * The critical rule: on API V1 an HTTP 200 is NOT proof of success. `errorText` is the source of
- * truth — empty means the operation succeeded, non-empty carries the reason it did not.
+ * truth - empty means the operation succeeded, non-empty carries the reason it did not.
  *
  * `errorTextIsInformational` is the sole, explicit exception to that rule: a handful of
  * endpoints document a 200-with-non-empty-`errorText` response as itself a success (an
- * idempotent no-op, or a purely informational note). It only ever changes the 200 case — a
+ * idempotent no-op, or a purely informational note). It only ever changes the 200 case - a
  * non-200 response still fails on a non-empty `errorText` regardless of this flag.
  */
 export function normalizeError(
@@ -79,7 +79,7 @@ export function normalizeError(
 
   if (isRecord(body)) {
     // Shape 1: the classic V1 business failure. Checked before the status code, because it is
-    // the only failure that can arrive with HTTP 200 — except the endpoints that opt into
+    // the only failure that can arrive with HTTP 200 - except the endpoints that opt into
     // `errorTextIsInformational`, where a 200 is a success no matter what `errorText` says.
     const errorText = body.errorText;
     const treatErrorTextAsFailure = !(errorTextIsInformational && httpStatus === 200);

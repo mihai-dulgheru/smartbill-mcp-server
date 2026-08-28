@@ -4,7 +4,7 @@ import { cifArg, withCif, type ToolDef } from './shared.ts';
 
 const PAGINATION_NOTE =
   'Cursor pagination: limit is 1-100 (default 20); `after` and `before` are ids and are mutually exclusive. ' +
-  'pagination.next is a complete URL that already carries the filters — when it is null the listing is finished, even if the last page filled exactly to limit. ' +
+  'pagination.next is a complete URL that already carries the filters - when it is null the listing is finished, even if the last page filled exactly to limit. ' +
   "No tool can fetch that URL directly: to get the next page yourself, call this tool again passing the last item's `id` as `after`.";
 
 type Resource = {
@@ -76,7 +76,7 @@ function listTool(resource: Resource): ToolDef {
     operationId: resource.listOperationId,
     api: 'v3',
     title: `List ${resource.plural} (V3)`,
-    description: `${resource.listDescription} Ids are prefixed \`${resource.idPrefix}\` and are stable — save them and reuse them later. ${PAGINATION_NOTE}`,
+    description: `${resource.listDescription} Ids are prefixed \`${resource.idPrefix}\` and are stable - save them and reuse them later. ${PAGINATION_NOTE}`,
     inputSchema: z.object({
       cif: cifArg,
       ...resource.filters,
@@ -119,7 +119,7 @@ function getTool(resource: Resource): ToolDef {
     operationId: resource.getOperationId,
     api: 'v3',
     title: `Get ${resource.singular} (V3)`,
-    description: `${resource.getDescription} The id must start with \`${resource.idPrefix}\` — an id with any other prefix is rejected as malformed_id before any API call is made.`,
+    description: `${resource.getDescription} The id must start with \`${resource.idPrefix}\` - an id with any other prefix is rejected as malformed_id before any API call is made.`,
     inputSchema: z.object({
       cif: cifArg,
       id: z.string().describe(`Resource id, starting with ${resource.idPrefix}.`),
@@ -127,7 +127,7 @@ function getTool(resource: Resource): ToolDef {
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client }, args, cif) => {
       const id = args.id as string;
-      // A prefix mismatch — including a path-traversal attempt like ".." or "." — would otherwise
+      // A prefix mismatch - including a path-traversal attempt like ".." or "." - would otherwise
       // reach `new URL()` and normalise onto some other, wrong endpoint instead of failing loudly.
       // The spec documents this exact rejection for a wrong-prefix id, so reproduce it locally.
       if (!id.startsWith(resource.idPrefix)) {

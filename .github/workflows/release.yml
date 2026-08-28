@@ -5,7 +5,7 @@ on:
     tags: ['v*']
 
 # Least privilege: the job only needs to read the repo and mint an OIDC token.
-# `id-token: write` is what makes `npm publish --provenance` possible — without it
+# `id-token: write` is what makes `npm publish --provenance` possible - without it
 # npm cannot attest that this tarball was built from this commit in this workflow.
 permissions:
   contents: read
@@ -99,7 +99,7 @@ jobs:
       # `prepublishOnly` re-runs check + build here. That is deliberate: the gate holds
       # no matter how publish is invoked, and it costs seconds.
       #
-      # Auth comes from npm Trusted Publishing over OIDC — no token, no secret. npm is
+      # Auth comes from npm Trusted Publishing over OIDC - no token, no secret. npm is
       # configured to trust mihai-dulgheru/smartbill-mcp-server via this workflow file.
       # Do not add NODE_AUTH_TOKEN here: an empty value writes a blank _authToken into
       # .npmrc and npm attempts token auth instead of falling back to OIDC.

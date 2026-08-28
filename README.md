@@ -50,7 +50,7 @@ claude mcp add smartbill \
 
 Then ask for something:
 
-> "List my invoice series, then issue a draft invoice on TEST for Acme SRL — one consulting hour at 250 RON."
+> "List my invoice series, then issue a draft invoice on TEST for Acme SRL - one consulting hour at 250 RON."
 
 The assistant reads your configured series and VAT rates first, because those values are
 account-specific and must not be guessed.
@@ -63,11 +63,11 @@ Credentials come from environment variables and never pass through the model's c
 
 | Variable                 | Required for             | Default                             |
 | ------------------------ | ------------------------ | ----------------------------------- |
-| `SMARTBILL_EMAIL`        | API V1 tools             | —                                   |
-| `SMARTBILL_TOKEN`        | API V1 tools             | —                                   |
-| `SMARTBILL_V3_TOKEN`     | API V3 tools             | —                                   |
-| `SMARTBILL_CIF`          | default company VAT code | —                                   |
-| `SMARTBILL_BASE_URL`     | —                        | `https://ws.smartbill.ro/SBORO/api` |
+| `SMARTBILL_EMAIL`        | API V1 tools             | -                                   |
+| `SMARTBILL_TOKEN`        | API V1 tools             | -                                   |
+| `SMARTBILL_V3_TOKEN`     | API V3 tools             | -                                   |
+| `SMARTBILL_CIF`          | default company VAT code | -                                   |
+| `SMARTBILL_BASE_URL`     | -                        | `https://ws.smartbill.ro/SBORO/api` |
 | `SMARTBILL_DOWNLOAD_DIR` | where PDFs are written   | OS temp directory                   |
 
 V1 and V3 credentials are independent: configure one and only that half of the tools registers.
@@ -84,7 +84,7 @@ missing to stderr. Every tool takes an optional `cif` argument that overrides `S
 | `smartbill_create_storno_invoice`      | Issue a reversal of an existing invoice                                              |
 | `smartbill_get_invoice_pdf`            | Download the PDF to disk                                                             |
 | `smartbill_get_invoice_payment_status` | Paid, unpaid and total amounts                                                       |
-| `smartbill_cancel_invoice`             | Cancel. Idempotent — cancelling an already-cancelled invoice still succeeds          |
+| `smartbill_cancel_invoice`             | Cancel. Idempotent - cancelling an already-cancelled invoice still succeeds          |
 | `smartbill_restore_invoice`            | Undo a cancel. Idempotent                                                            |
 | `smartbill_delete_invoice`             | Delete permanently. Only the most recent invoice in a series can normally be deleted |
 
@@ -113,14 +113,14 @@ explicitly rejects Chitanta and Bon fiscal.
 `smartbill_get_tax_and_series`, `smartbill_get_series`, `smartbill_get_stocks`,
 `smartbill_send_document_email`
 
-`smartbill_get_tax_and_series` returns VAT rates only, despite the name — use `smartbill_get_series`
+`smartbill_get_tax_and_series` returns VAT rates only, despite the name - use `smartbill_get_series`
 for series. `smartbill_send_document_email` requires `subject` and `bodyText`, when supplied, to
 already be Base64-encoded.
 
 ### API V3 (read-only)
 
 `smartbill_v3_list_clients` / `smartbill_v3_get_client`, and the same pair for `suppliers`,
-`products` and `warehouses`. Listings are cursor-paginated: `limit` is 1–100 (default 20), and
+`products` and `warehouses`. Listings are cursor-paginated: `limit` is 1-100 (default 20), and
 `after`/`before` are mutually exclusive. Ids carry a resource prefix (`cus_`, `sup_`, `prod_`,
 `ware_`) and are stable, so you can store them.
 
@@ -129,19 +129,19 @@ already be Base64-encoded.
 - **`seriesName`, `taxName` and `measuringUnitName` are account-specific** and must match your
   SmartBill configuration exactly. Read series from `smartbill_get_series`, VAT rate names from
   `smartbill_get_tax_and_series`, and units of measure from `smartbill_get_stocks` or
-  `smartbill_v3_list_products` — the tax endpoint does not return units.
+  `smartbill_v3_list_products` - the tax endpoint does not return units.
 - **Product prices exclude VAT by default.** Set `isTaxIncluded: true` only when the price already
   includes it.
 - **`discountType` picks which discount field applies, and SmartBill will not catch a wrong one.**
   `1` is a value-based discount taking `discountValue` (strictly negative, e.g. `-10`); `2` is a
   percentage discount taking `discountPercentage` (greater than 0, up to 100). The API does not
-  reject an out-of-range `discountType` — it silently produces a wrong document. This server only
+  reject an out-of-range `discountType` - it silently produces a wrong document. This server only
   accepts `1` or `2` and enforces the matching field, but the pairing is still yours to get right.
 - **Requests are validated locally before any HTTP call.** Non-negative `price`, strictly negative
   `discountValue`, `discountPercentage` in (0, 100], valid email addresses, `yyyy-MM-dd` dates and a
   V3 `limit` between 1 and 100 are all rejected client-side.
 - **An HTTP 200 from API V1 is not proof of success.** The server checks `errorText` on every
-  response and reports a non-empty one as a tool error — which is why a raw `curl` against the API
+  response and reports a non-empty one as a tool error - which is why a raw `curl` against the API
   can look like it worked when it did not.
 - **Five operations are idempotent by design**: cancelling or restoring an invoice or proforma
   already in that state succeeds with an informational message, as does asking
@@ -174,7 +174,7 @@ npm run build
 | `npm run check`     | everything above, in the order CI runs it |
 | `npm run build`     | compile `src/` to `dist/`                 |
 
-Running the tests needs **Node 22.18+ or 23.6+** — `npm test` executes `test/*.test.ts` directly via
+Running the tests needs **Node 22.18+ or 23.6+** - `npm test` executes `test/*.test.ts` directly via
 Node's native TypeScript type stripping, which shipped unflagged only from those versions. That is
 stricter than the Node 20 needed to _run_ the built server.
 
@@ -191,7 +191,7 @@ printf '%s\n%s\n%s\n' \
 ```
 
 `test/coverage.test.ts` asserts that every operation in `docs/smartbill-openapi-spec.json` maps to
-exactly one tool, so the spec file is the source of truth for the tool surface — update it and the
+exactly one tool, so the spec file is the source of truth for the tool surface - update it and the
 test will name whatever is unwired.
 
 ## Releasing
@@ -209,11 +209,11 @@ That runs the full check, bumps the version, commits, tags and pushes the tag. T
 the built server, and publishes with `--provenance`.
 
 Authentication uses [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) over
-OIDC, so there is no npm token anywhere — not on a developer machine, not in repository
+OIDC, so there is no npm token anywhere - not on a developer machine, not in repository
 secrets.
 
 `npm run release:dry` rehearses the tarball locally without publishing anything.
 
 ## License
 
-MIT — see [LICENSE](./LICENSE).
+MIT - see [LICENSE](./LICENSE).

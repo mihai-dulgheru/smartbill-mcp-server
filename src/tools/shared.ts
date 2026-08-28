@@ -51,7 +51,7 @@ export function resolveCif(config: Config, cif?: string): string | SmartBillErro
 /**
  * Wraps a tool `run` so the cif guard lives in one place instead of being copy-pasted into every
  * tool. "Never make an HTTP call without a resolved cif" is a correctness invariant, not a style
- * preference — a copy-pasted guard is one a future tool author can silently omit. This produces a
+ * preference - a copy-pasted guard is one a future tool author can silently omit. This produces a
  * `ToolDef['run']`; it does not change that type.
  */
 export function withCif(
@@ -71,7 +71,7 @@ export function withCif(
 /**
  * Overrides the error hint on a response carrying a specific HTTP status, leaving every other
  * field untouched. Some SmartBill endpoints document a status/body combination that means the
- * OPPOSITE of the generic hint errors.ts attaches for that shape — e.g. a 502 HTML page that is
+ * OPPOSITE of the generic hint errors.ts attaches for that shape - e.g. a 502 HTML page that is
  * this endpoint's documented normal failure mode, not a gateway fluke worth retrying. errors.ts
  * cannot know which operation is calling it, so the correction lives in the tool instead.
  */
@@ -114,11 +114,11 @@ export function toCallToolResult(outcome: ClientResult | ToolOutcome): CallToolR
 }
 
 /**
- * Writes a document to disk and returns its path — PDFs are never inlined into model context.
+ * Writes a document to disk and returns its path - PDFs are never inlined into model context.
  *
  * Defends its own contract rather than relying on callers to pass safe names. The whitelist below
  * strips path separators, but a sanitised name of exactly "." or ".." would still resolve to the
- * download directory itself or its parent — both are rejected explicitly. The containment check
+ * download directory itself or its parent - both are rejected explicitly. The containment check
  * afterwards is a second, independent layer: it still holds even if the whitelist regex is ever
  * loosened by a future edit.
  */

@@ -9,8 +9,8 @@ export const companyTools: ToolDef[] = [
     api: 'v1',
     title: 'Get VAT rates',
     description:
-      'List the VAT rates configured in the SmartBill account, with their names and percentages. Despite the name, this returns ONLY VAT rates — it does not return document series; use smartbill_get_series for those. ' +
-      'Call this before creating a document to get the exact `taxName` and `taxPercentage` values the account accepts — inventing them causes the document to be rejected.',
+      'List the VAT rates configured in the SmartBill account, with their names and percentages. Despite the name, this returns ONLY VAT rates - it does not return document series; use smartbill_get_series for those. ' +
+      'Call this before creating a document to get the exact `taxName` and `taxPercentage` values the account accepts - inventing them causes the document to be rejected.',
     inputSchema: z.object({ cif: cifArg }),
     annotations: { readOnlyHint: true },
     run: withCif(async ({ client }, _args, cif) => {
@@ -82,7 +82,7 @@ export const companyTools: ToolDef[] = [
     title: 'Email a document to a client',
     description:
       'Email an existing invoice or proforma to a client. Omit `to` to use the email address on the client record. ' +
-      'type must be "factura" or "proforma". `subject` and `bodyText`, when supplied, must be Base64-encoded — sending raw text wastes the call.',
+      'type must be "factura" or "proforma". `subject` and `bodyText`, when supplied, must be Base64-encoded - sending raw text wastes the call.',
     inputSchema: z.object({ cif: cifArg, document: sendEmailRequestSchema }),
     annotations: { destructiveHint: false, idempotentHint: false },
     run: withCif(async ({ client }, args, cif) => {

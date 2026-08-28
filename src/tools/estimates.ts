@@ -3,17 +3,17 @@ import { documentRefSchema, estimateRequestSchema } from '../schemas.ts';
 import { cifArg, savePdf, withCif, type ToolDef } from './shared.ts';
 
 const ACCOUNT_STRINGS =
-  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly and are never guessed — seriesName from smartbill_get_series, taxName from smartbill_get_tax_and_series, measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
+  'seriesName, taxName and measuringUnitName must match values configured in the SmartBill account exactly and are never guessed - seriesName from smartbill_get_series, taxName from smartbill_get_tax_and_series, measuringUnitName from smartbill_get_stocks or smartbill_v3_list_products, or by asking the user.';
 
 const docRef = { cif: cifArg, ...documentRefSchema.shape };
 
 /**
  * Every estimate tool but create and pdf is the same shape: cif + series + number on one path.
- * `errorTextIsInformational` is opt-in per call site — of the operations here, only
+ * `errorTextIsInformational` is opt-in per call site - of the operations here, only
  * getEstimateInvoices documents a 200 where `errorText` itself carries a purely informational
  * message ("...nu a fost facturata."), so only it passes the flag. cancelEstimate and
  * restoreEstimate are idempotent too, but per their spec examples that idempotency shows up as
- * `errorText: ""` with the message in `message` — an ordinary success already, needing no flag.
+ * `errorText: ""` with the message in `message` - an ordinary success already, needing no flag.
  * deleteEstimate gets neither: a real failure there must still surface.
  */
 const simple = (
@@ -86,7 +86,7 @@ export const estimateTools: ToolDef[] = [
         binary: true,
       });
       if (!res.ok) return res;
-      // A defined-but-empty body is just as unusable as a missing one — treat it the same way
+      // A defined-but-empty body is just as unusable as a missing one - treat it the same way
       // rather than silently saving a 0-byte "PDF".
       if (!res.bytes || res.bytes.length === 0) {
         return {
@@ -107,7 +107,7 @@ export const estimateTools: ToolDef[] = [
     'getEstimateInvoices',
     'List invoices issued from a proforma',
     'List the invoices that were created from a given proforma. Use it to check whether a proforma has already been invoiced before issuing another. ' +
-      'If the proforma has not been invoiced yet, the call still succeeds and the response can carry a purely informational `errorText` (e.g. "...nu a fost facturata.") — that is not a failure. ' +
+      'If the proforma has not been invoiced yet, the call still succeeds and the response can carry a purely informational `errorText` (e.g. "...nu a fost facturata.") - that is not a failure. ' +
       'A draft invoice appears in the `invoices` list with an empty `number` and still sets `areInvoicesCreated: true`; ignore entries with an empty `number` when checking whether a real invoice has been issued, or an unfinished draft can be mistaken for a completed one.',
     'GET',
     '/estimate/invoices',
