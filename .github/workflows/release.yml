@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+# Least privilege: the job only needs to read the repo and mint an OIDC token.
+# `id-token: write` is what makes `npm publish --provenance` possible — without it
+# npm cannot attest that this tarball was built from this commit in this workflow.
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: npm-publish
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          # Writes the .npmrc that both NODE_AUTH_TOKEN and OIDC publishing rely on.
+          registry-url: 'https://registry.npmjs.org'
+          cache: npm
+
+      - run: npm ci
+
+      # Provenance requires a recent npm. Node 24 ships one, but pin the floor so a
+      # future runner image change cannot silently drop the attestation.
+      - name: Ensure npm supports provenance
+        run: npm install -g npm@latest
+
+      # A tag that disagrees with package.json publishes the wrong version under the
+      # right name, which is not fixable after the fact. Fail before publishing.
+      - name: Verify the tag matches package.json
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG_VERSION package.json=$PKG_VERSION"
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+
+      # Refuse to republish a version that already exists, with a clear message rather
+      # than npm's generic failure.
+      - name: Verify the version is not already published
+        run: |
+          PKG_NAME="$(node -p "require('./package.json').name")"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if npm view "$PKG_NAME@$PKG_VERSION" version >/dev/null 2>&1; then
+            echo "::error::$PKG_NAME@$PKG_VERSION is already on npm. Bump the version first."
+            exit 1
+          fi
+
+      - run: npm run check
+
+      - run: npm run build
+
+      # The published bin must actually start and register every tool.
+      - name: Smoke-test the built server
+        run: |
+          printf '%s\n%s\n%s\n' \
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release","version":"1"}}}' \
+            '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
+            '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}' \
+          | SMARTBILL_EMAIL=ci@example.test SMARTBILL_TOKEN=dummy \
+            SMARTBILL_V3_TOKEN=dummy SMARTBILL_CIF=RO0000000 \
+            node dist/index.js 2>/dev/null \
+          | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                const line = s.trim().split("\n").map(JSON.parse).find((m) => m.id === 2);
+                const n = line?.result?.tools?.length ?? 0;
+                console.log(`registered ${n} tools`);
+                if (n !== 29) { console.error("expected 29"); process.exit(1); }
+              });'
+
+      # `prepublishOnly` re-runs check + build here. That is deliberate: the gate holds
+      # no matter how publish is invoked, and it costs seconds.
+      #
+      # Auth: with npm Trusted Publishing configured for this repo, OIDC covers this and
+      # NPM_TOKEN can be removed. Until then the secret is the fallback.
+      - name: Publish to npm with provenance
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Summarise
+        run: |
+          PKG_NAME="$(node -p "require('./package.json').name")"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          {
+            echo "### Published \`$PKG_NAME@$PKG_VERSION\`"
+            echo ""
+            echo "- https://www.npmjs.com/package/$PKG_NAME/v/$PKG_VERSION"
+            echo "- Provenance attestation attached."
+          } >> "$GITHUB_STEP_SUMMARY"

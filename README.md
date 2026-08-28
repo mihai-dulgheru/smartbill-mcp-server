@@ -194,6 +194,22 @@ printf '%s\n%s\n%s\n' \
 exactly one tool, so the spec file is the source of truth for the tool surface — update it and the
 test will name whatever is unwired.
 
+## Releasing
+
+Publishing runs in CI, triggered by a version tag, so no npm token lives on a developer
+machine and every release carries a [provenance attestation](https://docs.npmjs.com/generating-provenance-statements).
+
+```bash
+npm run release:patch   # or release:minor / release:major
+```
+
+That runs the full check, bumps the version, commits, tags and pushes the tag. The
+[Release workflow](./.github/workflows/release.yml) then verifies the tag matches
+`package.json`, refuses a version that is already on npm, re-runs the checks, smoke-tests
+the built server, and publishes with `--provenance`.
+
+`npm run release:dry` rehearses the tarball locally without publishing anything.
+
 ## License
 
 MIT — see [LICENSE](./LICENSE).
