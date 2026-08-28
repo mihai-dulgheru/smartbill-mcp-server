@@ -1,0 +1,10 @@
+# Normalise to LF in the working tree on every platform. Prettier is configured with
+# endOfLine: "lf", so without this a Windows clone with core.autocrlf=true checks out
+# CRLF and `npm run format:check` fails on a tree nobody touched.
+* text=auto eol=lf
+
+# Never munge binary or generated content.
+*.png binary
+*.jpg binary
+*.pdf binary
+package-lock.json -diff
