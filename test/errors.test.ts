@@ -99,6 +99,13 @@ test('stripHtml keeps text before the first tag and collapses whitespace', () =>
   assert.equal(stripHtml('fara marcaje'), 'fara marcaje');
 });
 
+test('stripHtml falls back to every tag stripped when the text begins with a tag', () => {
+  // Truncating at the first '<' would return '' here, producing an error with a blank message
+  // and no code or param.
+  assert.equal(stripHtml('<b>Eroare reala</b><br/>mai multe detalii'), 'Eroare reala mai multe detalii');
+  assert.equal(stripHtml('<div>tot ascuns</div>'), 'tot ascuns');
+});
+
 test('networkError reports httpStatus 0', () => {
   const err = networkError(new Error('ECONNREFUSED'));
   assert.equal(err.httpStatus, 0);

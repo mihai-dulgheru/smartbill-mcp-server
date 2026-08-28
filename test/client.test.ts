@@ -79,6 +79,23 @@ test('sends Content-Type only when there is a body', async () => {
   assert.equal(calls[1]!.init.body, JSON.stringify({ companyVatCode: 'RO1' }));
 });
 
+test('sends Accept: */* for a binary request, never a multi-value list', async () => {
+  // The spec documents the response Content-Type as MIRRORING whatever Accept was sent, so a
+  // comma-separated list is untested against a server that echoes a single value back — and if it
+  // resolved to application/json, a PDF response would wrongly hit the JSON decoder.
+  const { impl, calls } = stubFetch(
+    new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), { status: 200, headers: { 'content-type': 'application/octet-stream' } }),
+  );
+  await client(impl).request({ api: 'v1', method: 'GET', path: '/invoice/pdf', query: { cif: 'RO1' }, binary: true });
+  assert.equal(new Headers(calls[0]!.init.headers).get('accept'), '*/*');
+});
+
+test('sends Accept: application/json for a non-binary request', async () => {
+  const { impl, calls } = stubFetch(json({ errorText: '' }));
+  await client(impl).request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.equal(new Headers(calls[0]!.init.headers).get('accept'), 'application/json');
+});
+
 test('a 200 carrying errorText is returned as a failure', async () => {
   const { impl } = stubFetch(json({ errorText: 'Seria nu a fost gasita!', documentId: -1 }));
   const res = await client(impl).request({ api: 'v1', method: 'POST', path: '/invoice/v2', body: {} });
@@ -160,6 +177,38 @@ test('parses rate-limit headers', async () => {
   assert.equal(res.rateLimit.dailyLimit, 50000);
 });
 
+test('a response reporting remaining <= 0 holds the window until X-RateLimit-Reset', async () => {
+  // Our own sliding window only sees this process; X-RateLimit-Remaining sees every process
+  // sharing the token, so a reported 0 must hold the window even though the local count alone
+  // would have allowed the next call straight through.
+  let time = 1_700_000_000_000;
+  const slept: number[] = [];
+  const clock: Clock = { now: () => time, sleep: async (ms) => { slept.push(ms); time += ms; } };
+  const resetSeconds = Math.floor(time / 1000) + 5;
+  const { impl } = stubFetch(
+    json({ errorText: '' }, 200, { 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(resetSeconds) }),
+    json({ errorText: '' }),
+  );
+  const c = new SmartBillClient(config, { fetchImpl: impl, clock });
+  await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.ok(slept.some((ms) => ms >= 4000 && ms <= 5000), `expected a wait near 5000ms, got ${JSON.stringify(slept)}`);
+});
+
+test('a remaining count above zero does not hold the window', async () => {
+  let time = 1_700_000_000_000;
+  const slept: number[] = [];
+  const clock: Clock = { now: () => time, sleep: async (ms) => { slept.push(ms); time += ms; } };
+  const { impl } = stubFetch(
+    json({ errorText: '' }, 200, { 'x-ratelimit-remaining': '5', 'x-ratelimit-reset': String(Math.floor(time / 1000) + 5) }),
+    json({ errorText: '' }),
+  );
+  const c = new SmartBillClient(config, { fetchImpl: impl, clock });
+  await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  await c.request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.deepEqual(slept, []);
+});
+
 test('binary responses come back as bytes', async () => {
   const pdf = new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]), {
     status: 200,
@@ -231,6 +280,18 @@ test('a Retry-After above the ceiling errors instead of sleeping', async () => {
     assert.equal(res.error.code, 'rate_limit_exceeded');
     assert.match(res.error.hint ?? '', /600/);
   }
+});
+
+test('a blank Retry-After is treated as absent, not as an immediate retry', async () => {
+  // Number('') is 0, so without the fix this would sleep(0) and retry immediately — the one thing
+  // the docs say not to do on a rate-limit response.
+  const { impl, calls } = stubFetch(
+    json({ status: 429, type: 'invalid_request_error', errors: [{ code: 'rate_limit_exceeded', message: 'slow down' }] }, 429, { 'retry-after': '' }),
+  );
+  const res = await client(impl).request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.equal(calls.length, 1);
+  assert.equal(res.ok, false);
+  assert.equal(res.rateLimit.retryAfter, undefined);
 });
 
 test('a 400 is never retried', async () => {

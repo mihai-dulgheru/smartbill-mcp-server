@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { SmartBillClient } from '../src/client.ts';
 import { loadConfig } from '../src/config.ts';
-import { resolveCif, savePdf, toCallToolResult, withCif } from '../src/tools/shared.ts';
+import { resolveCif, savePdf, toCallToolResult, withCif, withStatusHint } from '../src/tools/shared.ts';
 
 test('resolveCif prefers the argument over the environment', () => {
   const config = loadConfig({ SMARTBILL_CIF: 'ENV' });
@@ -83,4 +83,27 @@ test('savePdf keeps a slash-based traversal attempt inside dir', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'sb-'));
   const result = await savePdf(dir, '../../etc/passwd', new Uint8Array([1]));
   assert.equal(result.path, join(dir, '.._.._etc_passwd'));
+});
+
+test('withStatusHint replaces the hint only when the status matches, leaving other fields alone', () => {
+  const failure = {
+    ok: false as const,
+    error: { message: 'boom', httpStatus: 502, hint: 'generic hint' },
+    status: 502,
+    rateLimit: {},
+  };
+  const patched = withStatusHint(failure, 502, 'specific hint');
+  assert.equal(patched.ok, false);
+  if (!patched.ok) {
+    assert.equal(patched.error.hint, 'specific hint');
+    assert.equal(patched.error.message, 'boom');
+  }
+});
+
+test('withStatusHint leaves a non-matching status or a success untouched', () => {
+  const wrongStatus = { ok: false as const, error: { message: 'boom', httpStatus: 400 }, status: 400, rateLimit: {} };
+  assert.equal(withStatusHint(wrongStatus, 502, 'specific hint'), wrongStatus);
+
+  const success = { ok: true as const, data: {}, status: 200, rateLimit: {} };
+  assert.equal(withStatusHint(success, 200, 'specific hint'), success);
 });

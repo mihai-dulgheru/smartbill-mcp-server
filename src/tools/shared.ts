@@ -62,6 +62,18 @@ export function withCif(
   };
 }
 
+/**
+ * Overrides the error hint on a response carrying a specific HTTP status, leaving every other
+ * field untouched. Some SmartBill endpoints document a status/body combination that means the
+ * OPPOSITE of the generic hint errors.ts attaches for that shape — e.g. a 502 HTML page that is
+ * this endpoint's documented normal failure mode, not a gateway fluke worth retrying. errors.ts
+ * cannot know which operation is calling it, so the correction lives in the tool instead.
+ */
+export function withStatusHint(result: ClientResult, status: number, hint: string): ClientResult {
+  if (result.ok || result.status !== status) return result;
+  return { ...result, error: { ...result.error, hint } };
+}
+
 type CallToolResult = {
   content: Array<{ type: 'text'; text: string }>;
   structuredContent?: Record<string, unknown>;

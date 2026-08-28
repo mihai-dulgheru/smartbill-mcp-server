@@ -44,7 +44,10 @@ export type ClientResult =
 const MAX_RETRY_AFTER_SECONDS = 60;
 
 const num = (raw: string | null): number | undefined => {
-  if (raw === null) return undefined;
+  // Number('') is 0, not NaN — without this check a blank header (e.g. an empty Retry-After)
+  // would be read as "wait zero seconds" and retried immediately, the one thing the docs warn
+  // against, instead of being treated as absent like a missing header.
+  if (raw === null || raw === '') return undefined;
   const n = Number(raw);
   return Number.isFinite(n) ? n : undefined;
 };
@@ -102,7 +105,14 @@ export class SmartBillClient {
     const url = this.#url(spec);
     const headers: Record<string, string> = {
       authorization: authHeader,
-      accept: spec.binary ? 'application/octet-stream, application/json' : 'application/json',
+      // The PDF endpoints echo whatever Accept they were sent back as the response Content-Type,
+      // even though the body is always the same PDF bytes — so Content-Type can't be trusted to
+      // pick a decoder, and a two-value list is untested against a server documented to mirror a
+      // single value. `*/*` is one of the few values the spec explicitly blesses (alongside
+      // `application/octet-stream`, `application/json`, and no header at all) and, being a
+      // wildcard, can't itself be echoed back as a concrete `Content-Type` that would fool the
+      // JSON decoder in #send.
+      accept: spec.binary ? '*/*' : 'application/json',
     };
     const init: RequestInit = { method: spec.method, headers };
     if (spec.body !== undefined) {
@@ -150,6 +160,12 @@ export class SmartBillClient {
     }
 
     const rateLimit = readRateLimit(response.headers);
+    // The server's own count is the only signal that sees every process sharing this token — our
+    // local sliding window only sees this process. When it says the window is exhausted, hold
+    // further requests until its reset time rather than trusting our own count alone.
+    if (rateLimit.remaining !== undefined && rateLimit.remaining <= 0 && rateLimit.reset !== undefined) {
+      this.#windows[api].holdUntil(rateLimit.reset * 1000);
+    }
     // Lowercased once so every check below is case-insensitive, matching a server that sends
     // e.g. `Application/JSON` or `Text/HTML`.
     const contentType = (response.headers.get('content-type') ?? '').toLowerCase();

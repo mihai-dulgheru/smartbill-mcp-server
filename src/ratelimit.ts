@@ -25,11 +25,24 @@ export class SlidingWindow {
   #hits: number[] = [];
   /** Serialises acquires so concurrent callers cannot all read a stale window. */
   #queue: Promise<void> = Promise.resolve();
+  /** Epoch ms before which acquire() must wait, fed by the server's own rate-limit headers. */
+  #holdUntil = 0;
 
   constructor(max: number, windowMs: number, clock: Clock = realClock) {
     this.#max = max;
     this.#windowMs = windowMs;
     this.#clock = clock;
+  }
+
+  /**
+   * Holds every subsequent acquire() until `untilMs` (epoch ms). Fed by a response's own
+   * X-RateLimit-Remaining/-Reset headers when remaining hits zero: our own hit count is only
+   * accurate within this one process, but the server's remaining count is authoritative across
+   * every process sharing the token, so it is a stronger signal than the local window whenever it
+   * says stop.
+   */
+  holdUntil(untilMs: number): void {
+    this.#holdUntil = Math.max(this.#holdUntil, untilMs);
   }
 
   async acquire(): Promise<void> {
@@ -40,6 +53,8 @@ export class SlidingWindow {
   }
 
   async #reserve(): Promise<void> {
+    const holdMs = this.#holdUntil - this.#clock.now();
+    if (holdMs > 0) await this.#clock.sleep(holdMs);
     this.#evict();
     if (this.#hits.length >= this.#max) {
       const oldest = this.#hits[0]!;

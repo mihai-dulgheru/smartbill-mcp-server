@@ -23,7 +23,12 @@ export type SmartBillError = {
 export function stripHtml(text: string): string {
   const cut = text.indexOf('<');
   const head = cut === -1 ? text : text.slice(0, cut);
-  return head.replace(/\s+/g, ' ').trim();
+  const leading = head.replace(/\s+/g, ' ').trim();
+  if (leading !== '') return leading;
+  // The leading sentence was empty — the text starts with a tag (e.g. an error wrapped entirely
+  // in <b>). Falling through to '' would surface a blank message with no code or param, so strip
+  // every tag in the string instead of just truncating at the first one.
+  return text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
 type ProblemItem = { code?: string; message?: string; param?: string; docUrl?: string };
