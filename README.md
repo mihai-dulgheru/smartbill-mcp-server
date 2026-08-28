@@ -208,6 +208,10 @@ That runs the full check, bumps the version, commits, tags and pushes the tag. T
 `package.json`, refuses a version that is already on npm, re-runs the checks, smoke-tests
 the built server, and publishes with `--provenance`.
 
+Authentication uses [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers) over
+OIDC, so there is no npm token anywhere — not on a developer machine, not in repository
+secrets.
+
 `npm run release:dry` rehearses the tarball locally without publishing anything.
 
 ## License

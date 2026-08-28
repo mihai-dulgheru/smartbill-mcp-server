@@ -15,7 +15,6 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    environment: npm-publish
 
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          # Writes the .npmrc that both NODE_AUTH_TOKEN and OIDC publishing rely on.
+          # Writes the .npmrc that OIDC trusted publishing relies on.
           registry-url: 'https://registry.npmjs.org'
           cache: npm
 
@@ -83,12 +82,12 @@ jobs:
       # `prepublishOnly` re-runs check + build here. That is deliberate: the gate holds
       # no matter how publish is invoked, and it costs seconds.
       #
-      # Auth: with npm Trusted Publishing configured for this repo, OIDC covers this and
-      # NPM_TOKEN can be removed. Until then the secret is the fallback.
+      # Auth comes from npm Trusted Publishing over OIDC — no token, no secret. npm is
+      # configured to trust mihai-dulgheru/smartbill-mcp-server via this workflow file.
+      # Do not add NODE_AUTH_TOKEN here: an empty value writes a blank _authToken into
+      # .npmrc and npm attempts token auth instead of falling back to OIDC.
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Summarise
         run: |
