@@ -87,6 +87,29 @@ test('a 200 carrying errorText is returned as a failure', async () => {
   if (!res.ok) assert.match(res.error.message, /Seria nu a fost gasita/);
 });
 
+test('a mixed-case Content-Type is still decoded as JSON', async () => {
+  const { impl } = stubFetch(
+    new Response(JSON.stringify({ errorText: '' }), { status: 200, headers: { 'content-type': 'Application/JSON' } }),
+  );
+  const res = await client(impl).request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.equal(res.ok, true);
+  if (res.ok) assert.deepEqual(res.data, { errorText: '' });
+});
+
+test('an unparseable JSON body is reported as a real HTTP failure, not a network error', async () => {
+  const { impl } = stubFetch(
+    new Response('{not valid json', { status: 502, headers: { 'content-type': 'application/json' } }),
+  );
+  const res = await client(impl).request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  assert.equal(res.ok, false);
+  assert.equal(res.status, 502);
+  if (!res.ok) {
+    assert.equal(res.error.httpStatus, 502);
+    assert.doesNotMatch(res.error.message, /reach SmartBill/i);
+    assert.doesNotMatch(res.error.hint ?? '', /connectivity/i);
+  }
+});
+
 test('parses rate-limit headers', async () => {
   const { impl } = stubFetch(
     json({ errorText: '' }, 200, {
@@ -129,6 +152,17 @@ test('a binary endpoint that returns JSON is decoded as an error', async () => {
   if (!res.ok) assert.match(res.error.message, /Numarul facturii/);
 });
 
+test('the binary branch still fails on a non-2xx octet-stream response', async () => {
+  const { impl } = stubFetch(
+    new Response(new Uint8Array([1, 2, 3]), { status: 500, headers: { 'content-type': 'application/octet-stream' } }),
+  );
+  const res = await client(impl).request({
+    api: 'v1', method: 'GET', path: '/invoice/pdf', query: { cif: 'RO1' }, binary: true,
+  });
+  assert.equal(res.ok, false);
+  if (!res.ok) assert.equal(res.error.httpStatus, 500);
+});
+
 test('an HTML 500 becomes the field-name hint', async () => {
   const { impl } = stubFetch(
     new Response('<html>500</html>', { status: 500, headers: { 'content-type': 'text/html' } }),
@@ -143,9 +177,14 @@ test('a 429 with Retry-After is retried exactly once', async () => {
     json({ status: 429, type: 'invalid_request_error', errors: [{ code: 'rate_limit_exceeded', message: 'slow down' }] }, 429, { 'retry-after': '2' }),
     json({ errorText: '', number: '1' }),
   );
-  const res = await client(impl).request({ api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' } });
+  const slept: number[] = [];
+  const clock: Clock = { now: () => Date.now(), sleep: async (ms) => { slept.push(ms); } };
+  const res = await new SmartBillClient(config, { fetchImpl: impl, clock }).request({
+    api: 'v1', method: 'GET', path: '/tax', query: { cif: 'RO1' },
+  });
   assert.equal(calls.length, 2);
   assert.equal(res.ok, true);
+  assert.deepEqual(slept, [2000]);
 });
 
 test('a Retry-After above the ceiling errors instead of sleeping', async () => {

@@ -54,6 +54,20 @@ function readRateLimit(headers: Headers): RateLimit {
   };
 }
 
+/**
+ * Builds the error for a response that genuinely arrived but whose body then failed to read or
+ * parse. Distinct from `networkError`, which is only for `fetch` itself rejecting: here the
+ * server answered, so the real HTTP status is known and connectivity was never the problem.
+ */
+function bodyReadError(status: number, what: string, cause: unknown): SmartBillError {
+  const detail = cause instanceof Error ? cause.message : String(cause);
+  return {
+    message: `SmartBill returned a response whose ${what}: ${detail}`,
+    httpStatus: status,
+    hint: 'The response body was malformed or truncated.',
+  };
+}
+
 export class SmartBillClient {
   #config: Config;
   #fetch: typeof fetch;
@@ -123,7 +137,9 @@ export class SmartBillClient {
     }
 
     const rateLimit = readRateLimit(response.headers);
-    const contentType = response.headers.get('content-type') ?? '';
+    // Lowercased once so every check below is case-insensitive, matching a server that sends
+    // e.g. `Application/JSON` or `Text/HTML`.
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase();
     const status = response.status;
 
     // Decode by what actually came back, not by what was expected: the PDF endpoints return
@@ -133,7 +149,7 @@ export class SmartBillClient {
       try {
         body = await response.json();
       } catch (cause) {
-        return { ok: false, error: networkError(cause), status, rateLimit };
+        return { ok: false, error: bodyReadError(status, 'JSON body could not be parsed', cause), status, rateLimit };
       }
       const error = normalizeError(status, contentType, body);
       return error
@@ -142,21 +158,28 @@ export class SmartBillClient {
     }
 
     if (contentType.includes('text/html')) {
-      const text = await response.text();
+      let text: string;
+      try {
+        text = await response.text();
+      } catch (cause) {
+        return { ok: false, error: bodyReadError(status, 'HTML body could not be read', cause), status, rateLimit };
+      }
       const error = normalizeError(status, contentType, text);
       return { ok: false, error: error ?? { message: text.slice(0, 200), httpStatus: status }, status, rateLimit };
     }
 
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    if (status >= 400) {
-      return {
-        ok: false,
-        error: { message: `Request failed with HTTP ${status}.`, httpStatus: status },
-        status,
-        rateLimit,
-      };
+    let bytes: Uint8Array;
+    try {
+      bytes = new Uint8Array(await response.arrayBuffer());
+    } catch (cause) {
+      return { ok: false, error: bodyReadError(status, 'binary body could not be read', cause), status, rateLimit };
     }
-    return { ok: true, data: undefined, bytes, status, rateLimit };
+    // No recognisable JSON/HTML envelope here (body is undefined): normalizeError falls back to
+    // trusting the status code, which is the same shape the binary branch used to hand-build.
+    const error = normalizeError(status, contentType, undefined);
+    return error
+      ? { ok: false, error, status, rateLimit }
+      : { ok: true, data: undefined, bytes, status, rateLimit };
   }
 
   /** Returns the header value, or the error explaining which variables are missing. */
