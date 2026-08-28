@@ -155,3 +155,23 @@ test('discountValue: 0 is rejected; -10 is accepted (exclusive maximum 0)', () =
   });
   assert.equal(negative.success, true);
 });
+
+test('discountType semantics: 1 pairs with discountValue, 2 with discountPercentage (regression guard)', () => {
+  // Read the discountType describe from the schema — critical because this text is what AI models read
+  let discountTypeDescribe = productSchema.shape.discountType.description;
+  // If wrapped in .optional(), description may be on the unwrapped schema
+  if (!discountTypeDescribe && productSchema.shape.discountType.unwrap) {
+    discountTypeDescribe = productSchema.shape.discountType.unwrap().description;
+  }
+
+  assert.ok(discountTypeDescribe, 'discountType must have a description');
+
+  // Guard against the most dangerous regression: swapped discountType semantics.
+  // Verify that both pairings are mentioned in the correct order.
+  const hasCorrectOrder = discountTypeDescribe.includes('1') &&
+                          discountTypeDescribe.indexOf('1') < discountTypeDescribe.indexOf('discountValue') &&
+                          discountTypeDescribe.includes('2') &&
+                          discountTypeDescribe.indexOf('2') < discountTypeDescribe.indexOf('discountPercentage');
+
+  assert.ok(hasCorrectOrder, 'discountType describe must state 1 before discountValue, and 2 before discountPercentage');
+});
